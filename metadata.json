@@ -1,0 +1,5 @@
+{
+  "name": "AI Paint Visualizer",
+  "description": "Upload a photo of your room, choose a paint color, and let AI visualize how it will look on your walls. A smart and easy way to preview your next paint job.",
+  "requestFramePermissions": []
+}
