@@ -16,14 +16,21 @@ export const visualizePaint = async (
 ): Promise<string> => {
   try {
     const model = 'gemini-2.5-flash-image';
-    const prompt = `Your task is to act as a professional virtual painter. You must repaint all visible interior wall surfaces in this image with the color "${color.name}" (hex code: ${color.hex}).
+    const prompt = `You are an expert virtual interior painter. Your task is to digitally repaint ONLY the main wall surfaces in the provided room photo.
 
-**Crucial Instructions:**
-1.  **Accuracy is paramount:** Be extremely precise with the edges where walls meet ceilings, floors, trim, windows, and doors. Do not let the color "bleed" onto these other surfaces.
-2.  **Preserve Realism:** You MUST maintain all original lighting, shadows, highlights, and textures from the original photo. The new paint should look like it's naturally part of the room.
-3.  **What NOT to paint:** Do NOT change the color of ceilings, floors, baseboards, crown molding, window frames, door frames, furniture, plants, decor items, light fixtures, or any object that is not a structural wall.
-4.  **Comprehensive Coverage:** Apply the paint to all main wall surfaces visible in the image. If there are multiple walls visible, paint them all consistently.
-5.  **Handle Obstructions:** Carefully paint around objects on the walls, like picture frames, light switches, or thermostats, without altering them.`;
+Color to apply:
+- Name: "${color.name}"
+- Hex Code: ${color.hex}
+
+**CRITICAL RULES:**
+
+1.  **SELECT WALLS ONLY:** First, mentally identify and select all primary structural walls.
+2.  **DO NOT PAINT:** You must NOT change the color of ceilings, floors, baseboards, crown molding, window frames, door frames, doors, furniture, plants, artwork, light fixtures, outlets, switches, or any other non-wall objects.
+3.  **MAINTAIN REALISM:** The final image MUST look photorealistic. You must preserve all original lighting, shadows, highlights, gradients, and textures from the original image. The new paint should look natural in the environment.
+4.  **PRECISION IS KEY:** Be extremely precise with the edges where walls meet other surfaces. Do not let the paint bleed or overlap onto ceilings, trim, or floors.
+5.  **FULL COVERAGE:** Apply the color evenly and consistently across all visible wall surfaces you have identified.
+
+Execute this task with the highest level of precision and realism. The output should be only the modified image.`;
 
     const response = await ai.models.generateContent({
       model,
