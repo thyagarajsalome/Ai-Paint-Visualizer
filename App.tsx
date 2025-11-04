@@ -5,7 +5,7 @@ import { MainContent, MainContentProps } from "./components/MainContent";
 import { AboutPage } from "./pages/About";
 import { PolicyPage } from "./pages/Policy";
 import { DisclaimerPage } from "./pages/Disclaimer";
-import { ContactPage } from "./pages/Contact";
+// import { ContactPage } from "./pages/Contact"; // <-- REMOVE THIS
 import { FaqPage } from "./pages/Faq";
 import { TermsPage } from "./pages/Terms";
 import type { PaintColor } from "./types";
@@ -17,7 +17,7 @@ const routes: { [key: string]: React.FC } = {
   "#about": AboutPage,
   "#policy": PolicyPage,
   "#disclaimer": DisclaimerPage,
-  "#contact": ContactPage,
+  // "#contact": ContactPage, // <-- REMOVE THIS
   "#faq": FaqPage,
   "#terms": TermsPage,
 };
