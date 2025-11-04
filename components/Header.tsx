@@ -13,13 +13,8 @@ const NavLink: React.FC<{ href: string, children: React.ReactNode }> = ({ href, 
 
 const ThemeToggle: React.FC = () => {
     const [isDark, setIsDark] = useState(() => {
-        if (localStorage.getItem('theme') === 'dark') {
-            return true;
-        }
-        if (localStorage.getItem('theme') === 'light') {
-            return false;
-        }
-        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // This logic now mirrors the inline script in index.html for consistency.
+        return localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
     });
 
     useEffect(() => {

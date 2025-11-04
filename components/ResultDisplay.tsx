@@ -25,16 +25,6 @@ const Placeholder: React.FC = () => (
 );
 
 export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, processedImageUrl, isLoading }) => {
-  const handleDownload = () => {
-    if (!processedImageUrl) return;
-    const link = document.createElement('a');
-    link.href = processedImageUrl;
-    link.download = 'wallpaint-room.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleShare = async () => {
     if (!processedImageUrl) return;
 
@@ -75,15 +65,20 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
             )}
 
             {processedImageUrl && (
-            <div className="flex items-center justify-center gap-4 mt-2">
-                <button onClick={handleDownload} className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors">
+            <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
+                <a 
+                    href={processedImageUrl} 
+                    download="wallpaint-room.png" 
+                    className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+                    aria-label="Download the painted image"
+                >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                     Download
-                </button>
+                </a>
                 {navigator.share && (
-                    <button onClick={handleShare} className="flex items-center gap-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-semibold py-2 px-5 rounded-lg shadow-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                    <button onClick={handleShare} className="flex items-center gap-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-semibold py-2 px-5 rounded-lg shadow-md hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors" aria-label="Share the painted image">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                         </svg>

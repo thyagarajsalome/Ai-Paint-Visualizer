@@ -99,7 +99,7 @@ export const COLORS: PaintColor[] = [
   { name: 'Creative Kisses', hex: '#c3b6c1' },
   
   // Additional Neutrals
-  { name: 'Anew Gray', hex: '#c7bea' },
+  { name: 'Anew Gray', hex: '#c7beaf' },
   { name: 'Mega Greige', hex: '#b3a697' },
   { name: 'Worldly Gray', hex: '#c7bfb3' },
   { name: 'Colonnade Gray', hex: '#c9c2b8' },
