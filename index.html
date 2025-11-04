@@ -14,10 +14,10 @@
     <!-- iOS PWA Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Paint Visualizer" />
+    <meta name="apple-mobile-web-app-title" content="wallpaint" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     
-    <title>AI Paint Visualizer</title>
+    <title>wallpaint - AI Paint Visualizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
   <script type="importmap">
 {
@@ -29,8 +29,16 @@
   }
 }
 </script>
+    <script>
+      // Set theme on page load to prevent FOUC
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
 </head>
-  <body class="bg-gray-100">
+  <body class="bg-gray-100 dark:bg-gray-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>

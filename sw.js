@@ -2,7 +2,7 @@
 // This is the simplest possible service worker that will satisfy the PWA install criteria.
 // In a real-world app, you would add caching strategies here.
 
-const CACHE_NAME = 'ai-paint-visualizer-v1';
+const CACHE_NAME = 'wallpaint-v1';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',

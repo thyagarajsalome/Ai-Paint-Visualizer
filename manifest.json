@@ -1,6 +1,6 @@
 {
-  "short_name": "Paint Visualizer",
-  "name": "AI Paint Visualizer",
+  "short_name": "wallpaint",
+  "name": "wallpaint - AI Paint Visualizer",
   "description": "Upload a photo of your room, choose a paint color, and let AI visualize how it will look on your walls.",
   "icons": [
     {

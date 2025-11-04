@@ -1,16 +1,16 @@
 import React from 'react';
 
 const FaqItem: React.FC<{ question: string, children: React.ReactNode }> = ({ question, children }) => (
-    <details className="p-4 rounded-lg bg-gray-50 border group">
-        <summary className="font-semibold text-lg text-gray-800 cursor-pointer list-none flex justify-between items-center">
+    <details className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border dark:border-gray-700 group">
+        <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer list-none flex justify-between items-center">
             {question}
-            <span className="transform transition-transform duration-200 group-open:rotate-45 text-indigo-500">
+            <span className="transform transition-transform duration-200 group-open:rotate-45 text-indigo-500 dark:text-indigo-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
             </span>
         </summary>
-        <div className="mt-4 text-gray-600 space-y-3 leading-relaxed">
+        <div className="mt-4 text-gray-600 dark:text-gray-300 space-y-3 leading-relaxed">
             {children}
         </div>
     </details>
@@ -19,10 +19,14 @@ const FaqItem: React.FC<{ question: string, children: React.ReactNode }> = ({ qu
 
 export const FaqPage: React.FC = () => {
     return (
-        <div className="bg-white p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200 max-w-4xl mx-auto">
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-8 text-center">Frequently Asked Questions</h1>
+        <div className="bg-white dark:bg-gray-800 p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
+            <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-8 text-center">Frequently Asked Questions</h1>
             
             <div className="space-y-4">
+                <FaqItem question="Is this service free to use?">
+                    <p>Yes, up to a point! To get you started, we provide a number of free credits when you sign up for an account. Each visualization you generate uses credits.</p>
+                    <p>To ensure we can continue running and maintaining the service, which involves costs for our servers and the powerful AI APIs we use, you will need to purchase additional credits once your free ones run out. This allows us to keep the tool running for everyone.</p>
+                </FaqItem>
                 <FaqItem question="What kind of photos work best?">
                     <p>For the best results, use well-lit, clear photos of your room. Try to capture the walls as directly as possible. Photos with less clutter on the walls tend to produce cleaner visualizations. Natural daylight is ideal for showing the truest color.</p>
                 </FaqItem>
