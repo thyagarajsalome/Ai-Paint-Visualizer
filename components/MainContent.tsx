@@ -77,8 +77,8 @@ export const MainContent: React.FC = () => {
     <>
     {/* The Header is now rendered in App.tsx. This component just contains the visualizer UI. */}
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div className="lg:col-span-4 bg-white p-6 rounded-2xl shadow-lg border border-gray-200 h-fit sticky top-24">
-        <h2 className="text-2xl font-bold text-gray-700 mb-4 border-b pb-3">Controls</h2>
+      <div className="lg:col-span-4 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 h-fit sticky top-24">
+        <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4 border-b dark:border-gray-600 pb-3">Controls</h2>
         <div className="space-y-6">
           <ImageUploader 
             onImageUpload={handleImageUpload} 

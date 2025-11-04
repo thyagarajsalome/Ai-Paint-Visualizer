@@ -2,8 +2,8 @@ import React from 'react';
 
 const PolicySection: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
     <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-3">{title}</h2>
-        <div className="text-gray-600 space-y-3 leading-relaxed">
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-3">{title}</h2>
+        <div className="text-gray-600 dark:text-gray-300 space-y-3 leading-relaxed">
             {children}
         </div>
     </div>
@@ -11,13 +11,13 @@ const PolicySection: React.FC<{ title: string, children: React.ReactNode }> = ({
 
 export const PolicyPage: React.FC = () => {
     return (
-        <div className="bg-white p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200 max-w-4xl mx-auto">
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-6 text-center">Privacy Policy</h1>
-            <p className="text-center text-gray-500 mb-8">Last Updated: {new Date().toLocaleDateString()}</p>
+        <div className="bg-white dark:bg-gray-800 p-8 md:p-12 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
+            <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-6 text-center">Privacy Policy</h1>
+            <p className="text-center text-gray-500 dark:text-gray-400 mb-8">Last Updated: {new Date().toLocaleDateString()}</p>
 
             <PolicySection title="Introduction">
                 <p>
-                    Welcome to AI Paint Visualizer. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
+                    Welcome to wallpaint. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
                 </p>
             </PolicySection>
 

@@ -7,6 +7,7 @@ import { PolicyPage } from './pages/Policy';
 import { DisclaimerPage } from './pages/Disclaimer';
 import { ContactPage } from './pages/Contact';
 import { FaqPage } from './pages/Faq';
+import { TermsPage } from './pages/Terms';
 
 const routes: { [key: string]: React.FC } = {
   '': MainContent,
@@ -15,6 +16,7 @@ const routes: { [key: string]: React.FC } = {
   '#disclaimer': DisclaimerPage,
   '#contact': ContactPage,
   '#faq': FaqPage,
+  '#terms': TermsPage,
 };
 
 const App: React.FC = () => {
@@ -34,7 +36,7 @@ const App: React.FC = () => {
   const CurrentPage = routes[route] || MainContent;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col">
       <Header />
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         <CurrentPage />
