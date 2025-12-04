@@ -93,6 +93,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
           </a>
           <div className="flex items-center gap-4 md:gap-8">
             <nav className="hidden md:flex items-center gap-6">
+              <NavLink href="#home">Home</NavLink>
               <NavLink href="#about">About</NavLink>
               <NavLink href="#faq">FAQ</NavLink>
               {/* <NavLink href="#contact">Contact</NavLink> */}{" "}
