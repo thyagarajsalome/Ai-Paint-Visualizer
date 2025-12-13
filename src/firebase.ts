@@ -3,7 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAJCd2i8kiVfYAUjFOll44Y6mgqwyGjJxo",
+  apiKey: "AIzaSyAI0kb2tdOBKtgqUjZoTF2UQUPHcf3kJhE",
   authDomain: "wallpaint-1b4e9.firebaseapp.com",
   projectId: "wallpaint-1b4e9",
   storageBucket: "wallpaint-1b4e9.firebasestorage.app",
