@@ -2,11 +2,15 @@
 export default {
   content: [
     "./index.html",
-    "./{components,pages,utils}/**/*.{js,ts,jsx,tsx}",
-    "./App.tsx",
-    "./index.tsx",
+    // OLD PATHS (Remove these):
+    // "./{components,pages,utils}/**/*.{js,ts,jsx,tsx}",
+    // "./App.tsx",
+    // "./index.tsx",
+
+    // NEW PATH (Add this):
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: "class", // This enables class-based dark mode, fixing your theme toggle
+  darkMode: "class",
   theme: {
     extend: {},
   },
