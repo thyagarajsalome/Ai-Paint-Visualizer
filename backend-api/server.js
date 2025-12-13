@@ -22,7 +22,10 @@ const razorpay = new Razorpay({
 });
 
 const app = express();
-app.use(cors({ origin: "https://wallpaint.in" })); // Secure this later
+
+// backend-api/server.js
+// Change this line:
+app.use(cors({ origin: ["https://wallpaint.in", "http://localhost:3000"] }));
 app.use(express.json({ limit: "10mb" }));
 
 // Middleware to check if user is logged in
