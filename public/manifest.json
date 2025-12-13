@@ -4,17 +4,12 @@
   "description": "Upload a photo of your room, choose a paint color, and let AI visualize how it will look on your walls.",
   "icons": [
     {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any"
-    },
-    {
-      "src": "/icon-192.png",
+      "src": "/icon.png-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon.png-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
