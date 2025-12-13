@@ -16,7 +16,6 @@ admin.initializeApp({
 const db = admin.firestore();
 
 // 2. Initialize Gemini & Razorpay
-// WARNING: Ensure GEMINI_API_KEY in .env is correct!
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -70,29 +69,20 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // B. Prepare Data for AI
     const { imageBase64, mimeType, color } = req.body;
 
-    // --- MODEL SELECTION ---
-    // We try gemini-2.0-flash-exp first (best for logic+vision)
-    // If you have billing enabled, this will work.
-    const modelId = "gemini-2.0-flash-exp";
+    // --- CHANGED: Use the SPECIALIZED Image Editing Model ---
+    // Now that billing is linked, this should work.
+    const modelId = "gemini-2.5-flash-image";
 
-    const prompt = `You are an expert interior design AI.
-    I have uploaded an image of a room.
-    Your task is to REPAINT the walls of this room with the following color:
-    Color Name: ${color.name}
-    Hex Code: ${color.hex}
-    
-    Constraints:
-    1. Keep all furniture, flooring, ceilings, and lighting EXACTLY as they are.
-    2. Only change the wall color.
-    3. Maintain photorealism, shadows, and textures.
-    4. Return ONLY the modified image.`;
+    const prompt = `Repaint the walls of this room with the color ${color.name} (Hex: ${color.hex}). 
+    Keep the furniture and lighting exactly the same. 
+    Output only the modified image.`;
 
     console.log(`Sending request to ${modelId}...`);
 
     // C. Call Gemini API
     const response = await ai.models.generateContent({
       model: modelId,
-      // DISABLE SAFETY SETTINGS to prevent empty responses
+      // Disable safety filters to ensure the image isn't blocked
       config: {
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -127,10 +117,18 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // D. Extract the Image safely
     if (!response || !response.candidates || response.candidates.length === 0) {
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-      throw new Error("AI returned an empty response. (Check Billing/Quota)");
+      throw new Error(
+        "AI returned an empty response. (Model might be refusing the task)"
+      );
     }
 
     const candidate = response.candidates[0];
+
+    // Check if the model blocked the content safely
+    if (candidate.finishReason === "SAFETY") {
+      throw new Error("AI blocked the request due to Safety filters.");
+    }
+
     const firstPart = candidate.content.parts[0];
 
     let resultImage = null;
@@ -142,6 +140,10 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     }
 
     if (!resultImage) {
+      console.error(
+        "Unexpected Response Structure:",
+        JSON.stringify(firstPart, null, 2)
+      );
       throw new Error("AI generated a response, but no image data was found.");
     }
 
@@ -153,6 +155,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     res.json({ image: resultImage });
   } catch (err) {
     console.error("Visualizer Error:", err);
+    // Send a clearer error message to the frontend
     res.status(500).json({ error: err.message || "Failed to process image." });
   }
 });
