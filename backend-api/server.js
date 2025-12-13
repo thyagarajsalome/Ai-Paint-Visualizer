@@ -16,6 +16,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 // 2. Initialize Gemini & Razorpay
+// WARNING: Ensure GEMINI_API_KEY in .env is correct!
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -69,7 +70,9 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // B. Prepare Data for AI
     const { imageBase64, mimeType, color } = req.body;
 
-    // --- CHANGED: Switch back to the model that works for your account ---
+    // --- MODEL SELECTION ---
+    // We try gemini-2.0-flash-exp first (best for logic+vision)
+    // If you have billing enabled, this will work.
     const modelId = "gemini-2.0-flash-exp";
 
     const prompt = `You are an expert interior design AI.
@@ -89,7 +92,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // C. Call Gemini API
     const response = await ai.models.generateContent({
       model: modelId,
-      // --- CRITICAL: Keep Safety Settings DISABLED ---
+      // DISABLE SAFETY SETTINGS to prevent empty responses
       config: {
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -100,10 +103,6 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
           },
           {
             category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_CIVIC_INTEGRITY",
             threshold: "BLOCK_NONE",
           },
         ],
@@ -128,7 +127,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // D. Extract the Image safely
     if (!response || !response.candidates || response.candidates.length === 0) {
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-      throw new Error("AI returned an empty response (Blocked or Failed).");
+      throw new Error("AI returned an empty response. (Check Billing/Quota)");
     }
 
     const candidate = response.candidates[0];
