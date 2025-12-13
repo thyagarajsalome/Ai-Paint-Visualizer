@@ -5,7 +5,6 @@ import { MainContent, MainContentProps } from "./components/MainContent";
 import { AboutPage } from "./pages/About";
 import { PolicyPage } from "./pages/Policy";
 import { DisclaimerPage } from "./pages/Disclaimer";
-// import { ContactPage } from "./pages/Contact"; // <-- REMOVE THIS
 import { FaqPage } from "./pages/Faq";
 import { TermsPage } from "./pages/Terms";
 import type { PaintColor } from "./types";
@@ -13,11 +12,10 @@ import { visualizePaint } from "./services/geminiService";
 import { fileToBase64 } from "./utils/fileUtils";
 
 const routes: { [key: string]: React.FC } = {
-  "": MainContent, // We will handle rendering MainContent specially
+  "": MainContent,
   "#about": AboutPage,
   "#policy": PolicyPage,
   "#disclaimer": DisclaimerPage,
-  // "#contact": ContactPage, // <-- REMOVE THIS
   "#faq": FaqPage,
   "#terms": TermsPage,
 };
@@ -25,7 +23,6 @@ const routes: { [key: string]: React.FC } = {
 const App: React.FC = () => {
   const [route, setRoute] = useState(window.location.hash || "");
 
-  // --- State Lifted from MainContent ---
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<PaintColor | null>(null);
@@ -36,7 +33,6 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Logic Lifted from MainContent ---
   const handleImageUpload = (file: File) => {
     setOriginalImageFile(file);
     setOriginalImageUrl(URL.createObjectURL(file));
@@ -73,8 +69,22 @@ const App: React.FC = () => {
     try {
       const base64Image = await fileToBase64(originalImageFile);
       const { data, mimeType } = base64Image;
-      const resultBase64 = await visualizePaint(data, mimeType, selectedColor);
-      setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
+
+      let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
+
+      // --- FIX: Clean the response string ---
+      if (resultBase64) {
+        // 1. Remove any existing "data:image..." prefix if the AI/Backend added it accidentally
+        resultBase64 = resultBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+
+        // 2. Remove any newlines or whitespace that might break the URL
+        resultBase64 = resultBase64.replace(/\s/g, "");
+
+        // 3. Set the clean URL
+        setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
+      } else {
+        throw new Error("Received empty image data from AI.");
+      }
     } catch (err) {
       console.error(err);
       setError(
@@ -86,8 +96,6 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [originalImageFile, selectedColor]);
-
-  // --- End of Lifted State & Logic ---
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -102,7 +110,6 @@ const App: React.FC = () => {
 
   const CurrentPage = routes[route] || MainContent;
 
-  // Props for MainContent
   const mainContentProps: MainContentProps = {
     originalImageFile,
     originalImageUrl,
