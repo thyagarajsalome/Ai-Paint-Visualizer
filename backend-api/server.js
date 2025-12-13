@@ -6,15 +6,18 @@ const { GoogleGenAI } = require("@google/genai");
 const cors = require("cors");
 require("dotenv").config();
 
-// 1. Initialize Firebase Admin (to talk to Firestore)
-// You will need to download a service account key from Firebase Console
+// 1. Initialize Firebase Admin
+// Make sure this file exists in your backend-api folder!
 const serviceAccount = require("./service-account-key.json");
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
+
 const db = admin.firestore();
 
 // 2. Initialize Gemini & Razorpay
+// Using the experimental model for better multimodal capabilities
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -22,66 +25,143 @@ const razorpay = new Razorpay({
 });
 
 const app = express();
-app.use(cors({ origin: "https://wallpaint.in" })); // Secure this later
+
+// Enable CORS for your frontend domains
+app.use(cors({ origin: ["https://wallpaint.in", "http://localhost:3000"] }));
+
+// Increase payload limit to handle Base64 images
 app.use(express.json({ limit: "10mb" }));
 
-// Middleware to check if user is logged in
+// Middleware to verify Firebase Auth Token
 const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split("Bearer ")[1];
+  if (!token) {
+    return res.status(401).send("Unauthorized: No token provided");
+  }
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
     req.user = decodedToken;
     next();
   } catch (error) {
-    res.status(401).send("Nt authorized");
+    console.error("Token verification failed:", error);
+    res.status(401).send("Unauthorized: Invalid token");
   }
 };
 
-// 3. The Visualization Endpoint (Replaces your frontend service)
+// ---------------------------------------------------------
+// 3. The Visualization Endpoint (The Core Logic)
+// ---------------------------------------------------------
 app.post("/api/visualize", verifyToken, async (req, res) => {
   const userId = req.user.uid;
 
-  // A. Check Credits
-  const userRef = db.collection("users").doc(userId);
-  const doc = await userRef.get();
-
-  if (!doc.exists || doc.data().credits < 1) {
-    return res.status(403).json({ error: "Insufficient credits" });
-  }
-
   try {
-    // B. Call Gemini (Logic moved from your frontend)
+    // A. Check User Credits
+    const userRef = db.collection("users").doc(userId);
+    const doc = await userRef.get();
+
+    // If user document doesn't exist, create it with 0 credits (safety fallback)
+    if (!doc.exists) {
+      await userRef.set({ credits: 0, email: req.user.email });
+      return res
+        .status(403)
+        .json({ error: "Insufficient credits. Please purchase a plan." });
+    }
+
+    const userData = doc.data();
+    if (!userData.credits || userData.credits < 1) {
+      return res.status(403).json({ error: "Insufficient credits" });
+    }
+
+    // B. Prepare Data for AI
     const { imageBase64, mimeType, color } = req.body;
-    const model = "gemini-2.5-flash-image";
-    const prompt = `... your prompt here ...`;
 
-    // ... Call Gemini API here ...
-    // const resultImage = ...
+    // Choose the model.
+    // Note: If 'gemini-2.0-flash-exp' is unavailable, try 'gemini-1.5-flash'
+    const modelId = "gemini-2.0-flash-exp";
 
-    // C. Deduct Credit
+    const prompt = `You are an expert interior design AI.
+    I have uploaded an image of a room.
+    Your task is to REPAINT the walls of this room with the following color:
+    Color Name: ${color.name}
+    Hex Code: ${color.hex}
+    
+    Constraints:
+    1. Keep all furniture, flooring, ceilings, and lighting EXACTLY as they are.
+    2. Only change the wall color.
+    3. Maintain photorealism, shadows, and textures.
+    4. Return ONLY the modified image.`;
+
+    // C. Call Gemini API
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: mimeType, // e.g., "image/jpeg"
+                data: imageBase64, // The base64 string from frontend
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    // D. Extract the Image safely
+    // Different models return data slightly differently. We check both paths.
+    const candidate = response.response.candidates[0];
+    const firstPart = candidate.content.parts[0];
+
+    // Check if we got an image binary or text
+    let resultImage = null;
+    if (firstPart.inlineData && firstPart.inlineData.data) {
+      resultImage = firstPart.inlineData.data;
+    } else if (firstPart.text) {
+      // Sometimes models return the base64 inside the text field if requested
+      resultImage = firstPart.text;
+    }
+
+    if (!resultImage) {
+      throw new Error("AI generated a response, but no image data was found.");
+    }
+
+    // E. Deduct 1 Credit
     await userRef.update({
       credits: admin.firestore.FieldValue.increment(-1),
     });
 
+    // F. Send Success Response
     res.json({ image: resultImage });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Visualizer Error:", err);
+    res.status(500).json({ error: err.message || "Failed to process image." });
   }
 });
 
+// ---------------------------------------------------------
 // 4. Razorpay - Create Order
+// ---------------------------------------------------------
 app.post("/api/create-order", verifyToken, async (req, res) => {
-  const { amount } = req.body; // e.g., 500 for 500 INR
-  const options = {
-    amount: amount * 100, // amount in the smallest currency unit
-    currency: "INR",
-    receipt: `receipt_${Date.now()}`,
-  };
-  const order = await razorpay.orders.create(options);
-  res.json(order);
+  try {
+    const { amount } = req.body;
+    const options = {
+      amount: amount * 100, // Razorpay expects amount in paise (sub-unit)
+      currency: "INR",
+      receipt: `receipt_${Date.now()}_${req.user.uid}`,
+    };
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    console.error("Razorpay Order Error:", error);
+    res.status(500).json({ error: "Failed to create payment order" });
+  }
 });
 
+// ---------------------------------------------------------
 // 5. Razorpay - Verify Payment & Add Credits
+// ---------------------------------------------------------
 app.post("/api/verify-payment", verifyToken, async (req, res) => {
   const {
     razorpay_order_id,
@@ -90,17 +170,36 @@ app.post("/api/verify-payment", verifyToken, async (req, res) => {
     creditsToAdd,
   } = req.body;
 
-  // ... Verify signature logic using crypto ...
-  // If valid:
+  const crypto = require("crypto");
+  const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+  hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+  const generated_signature = hmac.digest("hex");
 
-  await db
-    .collection("users")
-    .doc(req.user.uid)
-    .update({
-      credits: admin.firestore.FieldValue.increment(creditsToAdd),
-    });
+  if (generated_signature === razorpay_signature) {
+    // Payment is valid
+    try {
+      const userRef = db.collection("users").doc(req.user.uid);
 
-  res.json({ success: true });
+      // Ensure doc exists before updating
+      const doc = await userRef.get();
+      if (!doc.exists) {
+        await userRef.set({ credits: creditsToAdd, email: req.user.email });
+      } else {
+        await userRef.update({
+          credits: admin.firestore.FieldValue.increment(creditsToAdd),
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Credit Update Error:", error);
+      res
+        .status(500)
+        .json({ error: "Payment verified but failed to add credits." });
+    }
+  } else {
+    res.status(400).json({ error: "Invalid payment signature" });
+  }
 });
 
 const PORT = process.env.PORT || 8080;
