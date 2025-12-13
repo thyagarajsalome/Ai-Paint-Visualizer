@@ -70,7 +70,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     const { imageBase64, mimeType, color } = req.body;
 
     // --- CHANGED: Use the SPECIALIZED Image Editing Model ---
-    // If this gives a 404, we will try 'gemini-1.5-flash-002' as a fallback.
+    // Now that billing is linked, this should work.
     const modelId = "gemini-2.5-flash-image";
 
     const prompt = `Repaint the walls of this room with the color ${color.name} (Hex: ${color.hex}). 
@@ -82,8 +82,8 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // C. Call Gemini API
     const response = await ai.models.generateContent({
       model: modelId,
+      // Disable safety filters to ensure the image isn't blocked
       config: {
-        // Disable safety filters to prevent "Blocked" empty responses
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -118,11 +118,17 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     if (!response || !response.candidates || response.candidates.length === 0) {
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
       throw new Error(
-        "AI returned an empty response. The model might be overloaded or the prompt blocked."
+        "AI returned an empty response. (Model might be refusing the task)"
       );
     }
 
     const candidate = response.candidates[0];
+
+    // Check if the model blocked the content safely
+    if (candidate.finishReason === "SAFETY") {
+      throw new Error("AI blocked the request due to Safety filters.");
+    }
+
     const firstPart = candidate.content.parts[0];
 
     let resultImage = null;
@@ -134,6 +140,10 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     }
 
     if (!resultImage) {
+      console.error(
+        "Unexpected Response Structure:",
+        JSON.stringify(firstPart, null, 2)
+      );
       throw new Error("AI generated a response, but no image data was found.");
     }
 
@@ -145,6 +155,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     res.json({ image: resultImage });
   } catch (err) {
     console.error("Visualizer Error:", err);
+    // Send a clearer error message to the frontend
     res.status(500).json({ error: err.message || "Failed to process image." });
   }
 });
