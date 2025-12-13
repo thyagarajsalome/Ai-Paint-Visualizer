@@ -70,18 +70,21 @@ const App: React.FC = () => {
       const base64Image = await fileToBase64(originalImageFile);
       const { data, mimeType } = base64Image;
 
-      let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
+      const resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
-      // --- FIX: Clean the response string ---
       if (resultBase64) {
-        // 1. Remove any existing "data:image..." prefix if the AI/Backend added it accidentally
-        resultBase64 = resultBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+        // --- FINAL FIX: Strict Cleanup Order ---
 
-        // 2. Remove any newlines or whitespace that might break the URL
-        resultBase64 = resultBase64.replace(/\s/g, "");
+        // 1. FIRST, remove ALL whitespace, newlines, and carriage returns
+        //    This ensures the regex in step 2 can actually match the start of the string.
+        let cleanString = resultBase64.replace(/\s/g, "");
 
-        // 3. Set the clean URL
-        setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
+        // 2. SECOND, remove the data prefix if it exists.
+        //    We use case-insensitive flag 'i' just in case.
+        cleanString = cleanString.replace(/^data:image\/[a-z]+;base64,/i, "");
+
+        // 3. FINALLY, add the correct prefix.
+        setProcessedImageUrl(`data:image/png;base64,${cleanString}`);
       } else {
         throw new Error("Received empty image data from AI.");
       }
