@@ -7,7 +7,6 @@ const cors = require("cors");
 require("dotenv").config();
 
 // 1. Initialize Firebase Admin
-// Make sure this file exists in your backend-api folder!
 const serviceAccount = require("./service-account-key.json");
 
 admin.initializeApp({
@@ -17,7 +16,6 @@ admin.initializeApp({
 const db = admin.firestore();
 
 // 2. Initialize Gemini & Razorpay
-// Using the experimental model for better multimodal capabilities
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -26,10 +24,7 @@ const razorpay = new Razorpay({
 
 const app = express();
 
-// Enable CORS for your frontend domains
 app.use(cors({ origin: ["https://wallpaint.in", "http://localhost:3000"] }));
-
-// Increase payload limit to handle Base64 images
 app.use(express.json({ limit: "10mb" }));
 
 // Middleware to verify Firebase Auth Token
@@ -49,7 +44,7 @@ const verifyToken = async (req, res, next) => {
 };
 
 // ---------------------------------------------------------
-// 3. The Visualization Endpoint (The Core Logic)
+// 3. The Visualization Endpoint
 // ---------------------------------------------------------
 app.post("/api/visualize", verifyToken, async (req, res) => {
   const userId = req.user.uid;
@@ -59,7 +54,6 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     const userRef = db.collection("users").doc(userId);
     const doc = await userRef.get();
 
-    // If user document doesn't exist, create it with 0 credits (safety fallback)
     if (!doc.exists) {
       await userRef.set({ credits: 0, email: req.user.email });
       return res
@@ -75,33 +69,42 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // B. Prepare Data for AI
     const { imageBase64, mimeType, color } = req.body;
 
-    // Choose the model.
-    // Note: If 'gemini-2.0-flash-exp' is unavailable, try 'gemini-1.5-flash'
-    const modelId = "gemini-2.0-flash-exp";
+    // --- CHANGED: Use the SPECIALIZED Image Editing Model ---
+    // If this gives a 404, we will try 'gemini-1.5-flash-002' as a fallback.
+    const modelId = "gemini-2.5-flash-image";
 
-    const prompt = `You are an expert interior design AI.
-    I have uploaded an image of a room.
-    Your task is to REPAINT the walls of this room with the following color:
-    Color Name: ${color.name}
-    Hex Code: ${color.hex}
-    
-    Constraints:
-    1. Keep all furniture, flooring, ceilings, and lighting EXACTLY as they are.
-    2. Only change the wall color.
-    3. Maintain photorealism, shadows, and textures.
-    4. Return ONLY the modified image.`;
+    const prompt = `Repaint the walls of this room with the color ${color.name} (Hex: ${color.hex}). 
+    Keep the furniture and lighting exactly the same. 
+    Output only the modified image.`;
+
+    console.log(`Sending request to ${modelId}...`);
 
     // C. Call Gemini API
     const response = await ai.models.generateContent({
       model: modelId,
+      config: {
+        // Disable safety filters to prevent "Blocked" empty responses
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_NONE",
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_NONE",
+          },
+        ],
+      },
       contents: [
         {
           parts: [
             { text: prompt },
             {
               inlineData: {
-                mimeType: mimeType, // e.g., "image/jpeg"
-                data: imageBase64, // The base64 string from frontend
+                mimeType: mimeType,
+                data: imageBase64,
               },
             },
           ],
@@ -109,17 +112,24 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       ],
     });
 
+    console.log("Gemini Response Received.");
+
     // D. Extract the Image safely
-    // Different models return data slightly differently. We check both paths.
-    const candidate = response.response.candidates[0];
+    if (!response || !response.candidates || response.candidates.length === 0) {
+      console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
+      throw new Error(
+        "AI returned an empty response. The model might be overloaded or the prompt blocked."
+      );
+    }
+
+    const candidate = response.candidates[0];
     const firstPart = candidate.content.parts[0];
 
-    // Check if we got an image binary or text
     let resultImage = null;
     if (firstPart.inlineData && firstPart.inlineData.data) {
       resultImage = firstPart.inlineData.data;
     } else if (firstPart.text) {
-      // Sometimes models return the base64 inside the text field if requested
+      // Sometimes models return the base64 inside the text field
       resultImage = firstPart.text;
     }
 
@@ -132,7 +142,6 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       credits: admin.firestore.FieldValue.increment(-1),
     });
 
-    // F. Send Success Response
     res.json({ image: resultImage });
   } catch (err) {
     console.error("Visualizer Error:", err);
@@ -140,14 +149,12 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------
-// 4. Razorpay - Create Order
-// ---------------------------------------------------------
+// ... (Keep Razorpay endpoints exactly as they were) ...
 app.post("/api/create-order", verifyToken, async (req, res) => {
   try {
     const { amount } = req.body;
     const options = {
-      amount: amount * 100, // Razorpay expects amount in paise (sub-unit)
+      amount: amount * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}_${req.user.uid}`,
     };
@@ -159,9 +166,6 @@ app.post("/api/create-order", verifyToken, async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------
-// 5. Razorpay - Verify Payment & Add Credits
-// ---------------------------------------------------------
 app.post("/api/verify-payment", verifyToken, async (req, res) => {
   const {
     razorpay_order_id,
@@ -176,11 +180,8 @@ app.post("/api/verify-payment", verifyToken, async (req, res) => {
   const generated_signature = hmac.digest("hex");
 
   if (generated_signature === razorpay_signature) {
-    // Payment is valid
     try {
       const userRef = db.collection("users").doc(req.user.uid);
-
-      // Ensure doc exists before updating
       const doc = await userRef.get();
       if (!doc.exists) {
         await userRef.set({ credits: creditsToAdd, email: req.user.email });
@@ -189,7 +190,6 @@ app.post("/api/verify-payment", verifyToken, async (req, res) => {
           credits: admin.firestore.FieldValue.increment(creditsToAdd),
         });
       }
-
       res.json({ success: true });
     } catch (error) {
       console.error("Credit Update Error:", error);
