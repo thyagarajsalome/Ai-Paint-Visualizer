@@ -69,21 +69,28 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // B. Prepare Data for AI
     const { imageBase64, mimeType, color } = req.body;
 
-    // --- CHANGED: Use the SPECIALIZED Image Editing Model ---
-    // If this gives a 404, we will try 'gemini-1.5-flash-002' as a fallback.
-    const modelId = "gemini-2.5-flash-image";
+    // --- CHANGED: Switch back to the model that works for your account ---
+    const modelId = "gemini-2.0-flash-exp";
 
-    const prompt = `Repaint the walls of this room with the color ${color.name} (Hex: ${color.hex}). 
-    Keep the furniture and lighting exactly the same. 
-    Output only the modified image.`;
+    const prompt = `You are an expert interior design AI.
+    I have uploaded an image of a room.
+    Your task is to REPAINT the walls of this room with the following color:
+    Color Name: ${color.name}
+    Hex Code: ${color.hex}
+    
+    Constraints:
+    1. Keep all furniture, flooring, ceilings, and lighting EXACTLY as they are.
+    2. Only change the wall color.
+    3. Maintain photorealism, shadows, and textures.
+    4. Return ONLY the modified image.`;
 
     console.log(`Sending request to ${modelId}...`);
 
     // C. Call Gemini API
     const response = await ai.models.generateContent({
       model: modelId,
+      // --- CRITICAL: Keep Safety Settings DISABLED ---
       config: {
-        // Disable safety filters to prevent "Blocked" empty responses
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -93,6 +100,10 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
           },
           {
             category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_NONE",
+          },
+          {
+            category: "HARM_CATEGORY_CIVIC_INTEGRITY",
             threshold: "BLOCK_NONE",
           },
         ],
@@ -117,9 +128,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // D. Extract the Image safely
     if (!response || !response.candidates || response.candidates.length === 0) {
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-      throw new Error(
-        "AI returned an empty response. The model might be overloaded or the prompt blocked."
-      );
+      throw new Error("AI returned an empty response (Blocked or Failed).");
     }
 
     const candidate = response.candidates[0];
