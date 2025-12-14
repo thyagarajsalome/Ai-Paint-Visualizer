@@ -1,8 +1,10 @@
+// src/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
+  // Use the "Frontend Firebase Key" (ending in kJhE)
   apiKey: "AIzaSyAI0kb2tdOBKtgqUjZoTF2UQUPHcf3kJhE",
   authDomain: "wallpaint-1b4e9.firebaseapp.com",
   projectId: "wallpaint-1b4e9",
