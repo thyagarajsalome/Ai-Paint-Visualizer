@@ -66,24 +66,41 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Insufficient credits" });
     }
 
-    // B. Prepare Data for AI
+    // B. Prepare Data & SECURITY CHECKS
     const { imageBase64, mimeType, color } = req.body;
 
-    // --- CHANGED: Use the SPECIALIZED Image Editing Model ---
-    // Now that billing is linked, this should work.
-    const modelId = "gemini-2.5-flash-image";
+    // --- SECURITY FIX: Validate Inputs ---
+    const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+    if (!color.hex || !hexRegex.test(color.hex)) {
+      return res.status(400).json({ error: "Invalid color hex code." });
+    }
 
-    const prompt = `Repaint the walls of this room with the color ${color.name} (Hex: ${color.hex}). 
-    Keep the furniture and lighting exactly the same. 
-    Output only the modified image.`;
+    // Sanitize Color Name
+    const safeColorName = (color.name || "paint")
+      .replace(/[^a-zA-Z\s]/g, "")
+      .substring(0, 30);
 
-    console.log(`Sending request to ${modelId}...`);
+    // --- CHANGED: Use the BEST available model ---
+    const modelId = "gemini-2.0-flash-exp";
+
+    // Improved Prompt for better painting results
+    const prompt = `Act as an expert interior design AI. 
+    Your task: Repaint the walls of the room in this image with the color: ${safeColorName} (Hex: ${color.hex}). 
+    
+    CRITICAL RULES:
+    1. Identify the walls accurately. Do NOT paint the ceiling, floor, or furniture.
+    2. Maintain all original shadows, lighting, and textures. The result must look photorealistic.
+    3. Output ONLY the modified image. Do not include any text explanations.`;
+
+    console.log(
+      `Sending request to ${modelId} with color: ${safeColorName}...`
+    );
 
     // C. Call Gemini API
     const response = await ai.models.generateContent({
       model: modelId,
-      // Disable safety filters to ensure the image isn't blocked
       config: {
+        // Disable safety filters to ensure the image generation isn't blocked
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -117,14 +134,12 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // D. Extract the Image safely
     if (!response || !response.candidates || response.candidates.length === 0) {
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-      throw new Error(
-        "AI returned an empty response. (Model might be refusing the task)"
-      );
+      throw new Error("AI returned an empty response. Please try again.");
     }
 
     const candidate = response.candidates[0];
 
-    // Check if the model blocked the content safely
+    // Check if the model blocked the content
     if (candidate.finishReason === "SAFETY") {
       throw new Error("AI blocked the request due to Safety filters.");
     }
@@ -132,11 +147,16 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     const firstPart = candidate.content.parts[0];
 
     let resultImage = null;
+
+    // Gemini 2.0 often returns images in inlineData
     if (firstPart.inlineData && firstPart.inlineData.data) {
       resultImage = firstPart.inlineData.data;
     } else if (firstPart.text) {
-      // Sometimes models return the base64 inside the text field
-      resultImage = firstPart.text;
+      // Sometimes it wraps base64 in text, or returns text if it failed to paint
+      // We check if it looks like base64
+      if (firstPart.text.length > 1000) {
+        resultImage = firstPart.text;
+      }
     }
 
     if (!resultImage) {
@@ -144,7 +164,9 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
         "Unexpected Response Structure:",
         JSON.stringify(firstPart, null, 2)
       );
-      throw new Error("AI generated a response, but no image data was found.");
+      throw new Error(
+        "AI did not generate an image. It might have refused the prompt."
+      );
     }
 
     // E. Deduct 1 Credit
@@ -155,12 +177,11 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     res.json({ image: resultImage });
   } catch (err) {
     console.error("Visualizer Error:", err);
-    // Send a clearer error message to the frontend
     res.status(500).json({ error: err.message || "Failed to process image." });
   }
 });
 
-// ... (Keep Razorpay endpoints exactly as they were) ...
+// ... (Razorpay endpoints remain unchanged) ...
 app.post("/api/create-order", verifyToken, async (req, res) => {
   try {
     const { amount } = req.body;
