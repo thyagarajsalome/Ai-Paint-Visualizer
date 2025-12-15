@@ -23,7 +23,6 @@ const razorpay = new Razorpay({
 
 const app = express();
 
-// Increase limit for large image uploads
 app.use(cors({ origin: ["https://wallpaint.in", "http://localhost:3000"] }));
 app.use(express.json({ limit: "20mb" }));
 
@@ -66,48 +65,46 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Insufficient credits" });
     }
 
-    // B. Prepare Data & SECURITY CHECKS
+    // B. Prepare Data
     const { imageBase64, mimeType, color } = req.body;
 
-    // --- SECURITY FIX: Validate Inputs ---
     const hexRegex = /^#[0-9A-Fa-f]{6}$/;
     if (!color.hex || !hexRegex.test(color.hex)) {
       return res.status(400).json({ error: "Invalid color hex code." });
     }
 
-    // Sanitize Color Name
     const safeColorName = (color.name || "paint")
       .replace(/[^a-zA-Z\s]/g, "")
       .substring(0, 30);
 
+    // Use the experimental flash model
     const modelId = "gemini-2.0-flash-exp";
 
-    // --- UPDATED PROMPT FROM YOUR SNIPPET ---
+    // --- UPDATED PROMPT: Phrased as a direct image editing command ---
     const prompt = `
-      Act as an interior design visualizer.
-      Task: Repaint the walls of the room in the provided image.
-      Target Color: ${safeColorName} (Hex Code: ${color.hex}).
-      
-      Constraints:
-      1. ONLY change the color of the walls. 
-      2. Strictly preserve the ceiling, floor, windows, furniture, lighting fixtures, and decor. 
-      3. Maintain the original lighting, shadows, and perspective to ensure photorealism.
-      4. The finish should look like standard matte or eggshell wall paint.
-      5. You MUST output the result as an image. Do not output text.
+      Task: Edit the provided image.
+      Action: Change the color of the wall surfaces to ${safeColorName} (Hex: ${color.hex}).
+      Constraints: 
+      - Maintain the original room layout, furniture, lighting, and shadows exactly.
+      - Output ONLY the modified image.
     `;
 
     console.log(
       `Sending request to ${modelId} with color: ${safeColorName}...`
     );
 
-    // C. Call Gemini API
+    // C. Call Gemini API with System Instructions
     const response = await ai.models.generateContent({
       model: modelId,
       config: {
-        // --- CONFIGURATION FIXES ---
-        // 1. REMOVED responseMimeType (Caused 400 error)
-        // 2. REMOVED responseModalities (Caused 400 error)
-        // 3. Keep safety settings loose to prevent image blocking
+        // System instructions help force the model to behave as an image editor
+        systemInstruction: {
+          parts: [
+            {
+              text: "You are a professional image editing AI. Your job is to strictly follow image editing instructions and output the result. You do not refuse safe image editing tasks.",
+            },
+          ],
+        },
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -125,12 +122,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
         {
           parts: [
             { text: prompt },
-            {
-              inlineData: {
-                mimeType: mimeType,
-                data: imageBase64,
-              },
-            },
+            { inlineData: { mimeType: mimeType, data: imageBase64 } },
           ],
         },
       ],
@@ -139,25 +131,30 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     console.log("Gemini Response Received.");
 
     // D. Extract the Image safely
+    // Check if candidates array exists and has items
     if (!response || !response.candidates || response.candidates.length === 0) {
-      console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-      throw new Error(
-        "AI returned an empty response. The model might be overloaded."
+      console.log(
+        "Usage Metadata:",
+        JSON.stringify(response?.usageMetadata, null, 2)
       );
+      console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
+
+      // If we get here, the model refused.
+      return res.status(422).json({
+        error:
+          "The AI model refused to process this specific image. Please try a clearer photo of an empty room, or a different angle. (Model Safety Refusal)",
+      });
     }
 
     const candidate = response.candidates[0];
 
-    // Check if the model blocked the content
     if (candidate.finishReason === "SAFETY") {
       throw new Error("AI blocked the request due to Safety filters.");
     }
 
-    // Iterate through parts to find the image data
     let resultImage = null;
     if (candidate.content && candidate.content.parts) {
       for (const part of candidate.content.parts) {
-        // Check for inlineData (standard image response)
         if (part.inlineData && part.inlineData.data) {
           resultImage = part.inlineData.data;
           break;
@@ -167,11 +164,11 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
 
     if (!resultImage) {
       console.error(
-        "Unexpected Response Structure:",
+        "No image found in candidate:",
         JSON.stringify(candidate, null, 2)
       );
       throw new Error(
-        "AI did not generate a valid image. It might have refused the prompt."
+        "AI completed the task but did not return an image data part."
       );
     }
 
@@ -183,12 +180,11 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     res.json({ image: resultImage });
   } catch (err) {
     console.error("Visualizer Error:", err);
-    // Return the actual error message to the frontend for debugging
     res.status(500).json({ error: err.message || "Failed to process image." });
   }
 });
 
-// ... (Razorpay endpoints remain unchanged) ...
+// ... Razorpay routes ...
 app.post("/api/create-order", verifyToken, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -212,7 +208,6 @@ app.post("/api/verify-payment", verifyToken, async (req, res) => {
     razorpay_signature,
     creditsToAdd,
   } = req.body;
-
   const crypto = require("crypto");
   const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
   hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
