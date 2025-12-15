@@ -1,11 +1,10 @@
-// src/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  // Use the "Frontend Firebase Key" (ending in kJhE)
-  apiKey: "AIzaSyAI0kb2tdOBKtgqUjZoTF2UQUPHcf3kJhE",
+  // We use import.meta.env for Vite
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "wallpaint-1b4e9.firebaseapp.com",
   projectId: "wallpaint-1b4e9",
   storageBucket: "wallpaint-1b4e9.firebasestorage.app",
