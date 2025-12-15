@@ -3,7 +3,9 @@ import type { PaintColor } from "../types";
 
 // You should eventually put this URL in your .env file as VITE_BACKEND_URL
 // For now, replace this with your actual Cloud Run URL after deployment
-const BACKEND_URL = "http://localhost:8080/api/visualize";
+// Use the environment variable, or fallback to localhost for development
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:8080/api/visualize";
 
 export const visualizePaint = async (
   base64ImageData: string,
