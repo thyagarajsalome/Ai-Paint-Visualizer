@@ -1,23 +1,23 @@
 import path from "path";
-import { defineConfig } from "vite"; // removed loadEnv as it is no longer used for the define block
+import { fileURLToPath } from "url";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig(({ mode }) => {
-  // You can remove the env loading if you don't need other env vars
-  // const env = loadEnv(mode, ".", "");
+// Fix for __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
       host: "0.0.0.0",
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+        "Cross-Origin-Embedder-Policy": "require-corp",
+      },
     },
     plugins: [react()],
-    // --- REMOVE THIS DEFINE BLOCK ---
-    // define: {
-    //   "process.env.API_KEY": JSON.stringify(env.GEMINI_API_KEY),
-    //   "process.env.GEMINI_API_KEY": JSON.stringify(env.GEMINI_API_KEY),
-    // },
-    // --------------------------------
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
