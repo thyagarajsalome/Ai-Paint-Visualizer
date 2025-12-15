@@ -5,7 +5,7 @@ import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   // Use the "Frontend Firebase Key" (ending in kJhE)
-  apiKey: "AIzaSyAI0kb2tdOBKtgqUjZoTF2UQUPHcf3kJhE",
+  apiKey: "AIzaSyCB6FB4JYNrfp9cF8pMz7tBeJHgi-zPkas",
   authDomain: "wallpaint-1b4e9.firebaseapp.com",
   projectId: "wallpaint-1b4e9",
   storageBucket: "wallpaint-1b4e9.firebasestorage.app",

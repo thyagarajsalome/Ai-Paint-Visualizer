@@ -1,4 +1,3 @@
-// backend-api/server.js
 const express = require("express");
 const admin = require("firebase-admin");
 const Razorpay = require("razorpay");
@@ -24,8 +23,9 @@ const razorpay = new Razorpay({
 
 const app = express();
 
+// Increase limit for large image uploads
 app.use(cors({ origin: ["https://wallpaint.in", "http://localhost:3000"] }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "20mb" }));
 
 // Middleware to verify Firebase Auth Token
 const verifyToken = async (req, res, next) => {
@@ -80,17 +80,21 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       .replace(/[^a-zA-Z\s]/g, "")
       .substring(0, 30);
 
-    // --- CHANGED: Use the BEST available model ---
     const modelId = "gemini-2.0-flash-exp";
 
-    // Improved Prompt for better painting results
-    const prompt = `Act as an expert interior design AI. 
-    Your task: Repaint the walls of the room in this image with the color: ${safeColorName} (Hex: ${color.hex}). 
-    
-    CRITICAL RULES:
-    1. Identify the walls accurately. Do NOT paint the ceiling, floor, or furniture.
-    2. Maintain all original shadows, lighting, and textures. The result must look photorealistic.
-    3. Output ONLY the modified image. Do not include any text explanations.`;
+    // --- UPDATED PROMPT FROM YOUR SNIPPET ---
+    const prompt = `
+      Act as an interior design visualizer.
+      Task: Repaint the walls of the room in the provided image.
+      Target Color: ${safeColorName} (Hex Code: ${color.hex}).
+      
+      Constraints:
+      1. ONLY change the color of the walls. 
+      2. Strictly preserve the ceiling, floor, windows, furniture, lighting fixtures, and decor. 
+      3. Maintain the original lighting, shadows, and perspective to ensure photorealism.
+      4. The finish should look like standard matte or eggshell wall paint.
+      5. You MUST output the result as an image. Do not output text.
+    `;
 
     console.log(
       `Sending request to ${modelId} with color: ${safeColorName}...`
@@ -100,7 +104,10 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     const response = await ai.models.generateContent({
       model: modelId,
       config: {
-        // Disable safety filters to ensure the image generation isn't blocked
+        // --- CONFIGURATION FIXES ---
+        // 1. REMOVED responseMimeType (Caused 400 error)
+        // 2. REMOVED responseModalities (Caused 400 error)
+        // 3. Keep safety settings loose to prevent image blocking
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -134,7 +141,9 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     // D. Extract the Image safely
     if (!response || !response.candidates || response.candidates.length === 0) {
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-      throw new Error("AI returned an empty response. Please try again.");
+      throw new Error(
+        "AI returned an empty response. The model might be overloaded."
+      );
     }
 
     const candidate = response.candidates[0];
@@ -144,28 +153,25 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       throw new Error("AI blocked the request due to Safety filters.");
     }
 
-    const firstPart = candidate.content.parts[0];
-
+    // Iterate through parts to find the image data
     let resultImage = null;
-
-    // Gemini 2.0 often returns images in inlineData
-    if (firstPart.inlineData && firstPart.inlineData.data) {
-      resultImage = firstPart.inlineData.data;
-    } else if (firstPart.text) {
-      // Sometimes it wraps base64 in text, or returns text if it failed to paint
-      // We check if it looks like base64
-      if (firstPart.text.length > 1000) {
-        resultImage = firstPart.text;
+    if (candidate.content && candidate.content.parts) {
+      for (const part of candidate.content.parts) {
+        // Check for inlineData (standard image response)
+        if (part.inlineData && part.inlineData.data) {
+          resultImage = part.inlineData.data;
+          break;
+        }
       }
     }
 
     if (!resultImage) {
       console.error(
         "Unexpected Response Structure:",
-        JSON.stringify(firstPart, null, 2)
+        JSON.stringify(candidate, null, 2)
       );
       throw new Error(
-        "AI did not generate an image. It might have refused the prompt."
+        "AI did not generate a valid image. It might have refused the prompt."
       );
     }
 
@@ -177,6 +183,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     res.json({ image: resultImage });
   } catch (err) {
     console.error("Visualizer Error:", err);
+    // Return the actual error message to the frontend for debugging
     res.status(500).json({ error: err.message || "Failed to process image." });
   }
 });
