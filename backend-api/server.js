@@ -15,6 +15,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 // 2. Initialize Gemini & Razorpay
+// Note: Ensure your GEMINI_API_KEY has access to the experimental models
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -54,7 +55,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     const doc = await userRef.get();
 
     if (!doc.exists) {
-      await userRef.set({ credits: 0, email: req.user.email });
+      await userRef.set({ credits: 5, email: req.user.email });
       return res
         .status(403)
         .json({ error: "Insufficient credits. Please purchase a plan." });
@@ -77,31 +78,33 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       .replace(/[^a-zA-Z\s]/g, "")
       .substring(0, 30);
 
-    // Use the experimental flash model
+    // Use the experimental flash model which supports native image generation
     const modelId = "gemini-2.0-flash-exp";
 
-    // --- UPDATED PROMPT: Phrased as a direct image editing command ---
+    // --- UPDATED PROMPT ---
+    // Gemini 2.0 responds better to "Generate" instructions for image output
     const prompt = `
-      Task: Edit the provided image.
-      Action: Change the color of the wall surfaces to ${safeColorName} (Hex: ${color.hex}).
-      Constraints: 
-      - Maintain the original room layout, furniture, lighting, and shadows exactly.
-      - Output ONLY the modified image.
+      Generate a photorealistic image of the provided room with the following change:
+      Paint the walls with the color ${safeColorName} (approximate Hex: ${color.hex}).
+      
+      Strictly maintain the original furniture, lighting, shadows, and perspective. 
+      The output must be a high-quality image of the room.
     `;
 
     console.log(
       `Sending request to ${modelId} with color: ${safeColorName}...`
     );
 
-    // C. Call Gemini API with System Instructions
+    // C. Call Gemini API with Config
     const response = await ai.models.generateContent({
       model: modelId,
       config: {
-        // System instructions help force the model to behave as an image editor
+        // IMPORTANT: Force the model to consider IMAGE output
+        responseModalities: ["IMAGE"],
         systemInstruction: {
           parts: [
             {
-              text: "You are a professional image editing AI. Your job is to strictly follow image editing instructions and output the result. You do not refuse safe image editing tasks.",
+              text: "You are an expert interior design AI capable of photorealistic image generation. Your task is to visualize paint changes on walls accurately while preserving the room's original structure and lighting.",
             },
           ],
         },
@@ -131,18 +134,11 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     console.log("Gemini Response Received.");
 
     // D. Extract the Image safely
-    // Check if candidates array exists and has items
     if (!response || !response.candidates || response.candidates.length === 0) {
-      console.log(
-        "Usage Metadata:",
-        JSON.stringify(response?.usageMetadata, null, 2)
-      );
       console.error("FULL ERROR RESPONSE:", JSON.stringify(response, null, 2));
-
-      // If we get here, the model refused.
       return res.status(422).json({
         error:
-          "The AI model refused to process this specific image. Please try a clearer photo of an empty room, or a different angle. (Model Safety Refusal)",
+          "The AI model refused the request. Please try a different photo.",
       });
     }
 
@@ -153,6 +149,8 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     }
 
     let resultImage = null;
+
+    // Check parts for the image
     if (candidate.content && candidate.content.parts) {
       for (const part of candidate.content.parts) {
         if (part.inlineData && part.inlineData.data) {
@@ -163,12 +161,14 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     }
 
     if (!resultImage) {
-      console.error(
-        "No image found in candidate:",
-        JSON.stringify(candidate, null, 2)
-      );
+      // LOGGING: If no image, print what the AI *did* say (usually text refusal)
+      const textResponse =
+        candidate.content?.parts?.[0]?.text || "No text content";
+      console.error("AI Text Response (Failure Reason):", textResponse);
+
       throw new Error(
-        "AI completed the task but did not return an image data part."
+        "AI completed the task but returned text instead of an image. " +
+          "It might be refusing to edit this specific photo."
       );
     }
 
