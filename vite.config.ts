@@ -12,9 +12,9 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: "0.0.0.0",
       headers: {
-        // Change from "same-origin" to allow the login popup to talk to the app
+        // ALLOW popups to talk back to the app
         "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
-        // Change from "require-corp" to "unsafe-none" to stop blocking Firebase resources
+        // CHANGE from "require-corp" to "unsafe-none" to stop blocking Firebase
         "Cross-Origin-Embedder-Policy": "unsafe-none",
       },
     },
