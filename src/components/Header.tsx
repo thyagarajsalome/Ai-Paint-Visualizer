@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
-import {
-  GoogleAuthProvider,
-  signInWithRedirect, // Definitive fix for COOP policy blocks
-  signOut,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
+import { signOut, onAuthStateChanged, User } from "firebase/auth";
+import { AuthModal } from "./AuthModal"; // Ensure you create this file next
 
 interface HeaderProps {
   onReset?: () => void;
@@ -45,6 +40,7 @@ const ThemeToggle: React.FC = () => {
 
 export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // State for modal
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -52,16 +48,6 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
     });
     return () => unsubscribe();
   }, []);
-
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      // signInWithRedirect does not require cross-window communication
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -93,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
             {user ? (
               <div className="flex items-center gap-4">
                 <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {user.displayName}
+                  {user.displayName || user.email?.split("@")[0]}
                 </span>
                 {user.photoURL && (
                   <img
@@ -111,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
               </div>
             ) : (
               <button
-                onClick={handleLogin}
+                onClick={() => setIsAuthModalOpen(true)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
               >
                 Sign In
@@ -131,6 +117,12 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal Component */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </header>
   );
 };
