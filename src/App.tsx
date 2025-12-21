@@ -10,8 +10,10 @@ import { TermsPage } from "./pages/Terms";
 import type { PaintColor } from "./types";
 import { visualizePaint } from "./services/geminiService";
 import { fileToBase64 } from "./utils/fileUtils";
+import { auth } from "./firebase";
+import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 
-const routes: { [key: string]: React.FC } = {
+const routes: { [key: string]: React.FC<any> } = {
   "": MainContent,
   "#about": AboutPage,
   "#policy": PolicyPage,
@@ -22,7 +24,6 @@ const routes: { [key: string]: React.FC } = {
 
 const App: React.FC = () => {
   const [route, setRoute] = useState(window.location.hash || "");
-
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<PaintColor | null>(null);
@@ -32,6 +33,37 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- PASSWORDLESS SIGN-IN HANDLER ---
+  useEffect(() => {
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      let email = window.localStorage.getItem("emailForSignIn");
+
+      // Prompt for email if user switched devices/browsers
+      if (!email) {
+        email = window.prompt("Please confirm your email to complete sign-in:");
+      }
+
+      if (email) {
+        setIsLoading(true);
+        signInWithEmailLink(auth, email, window.location.href)
+          .then(() => {
+            window.localStorage.removeItem("emailForSignIn");
+            // Clean up URL parameters for a cleaner UX
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
+          })
+          .catch((err) => {
+            console.error("Magic link error:", err);
+            setError("The sign-in link has expired or is invalid.");
+          })
+          .finally(() => setIsLoading(false));
+      }
+    }
+  }, []);
 
   const handleImageUpload = (file: File) => {
     setOriginalImageFile(file);
@@ -73,15 +105,8 @@ const App: React.FC = () => {
       let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
       if (resultBase64) {
-        // --- CORRECTED CLEANUP ORDER ---
-
-        // 1. FIRST: Remove ALL whitespace/newlines anywhere in the string
         resultBase64 = resultBase64.replace(/\s/g, "");
-
-        // 2. SECOND: Remove the prefix if it exists (Case insensitive)
         resultBase64 = resultBase64.replace(/^data:image\/[a-z]+;base64,/i, "");
-
-        // 3. THIRD: Add the correct prefix manually
         setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
       } else {
         throw new Error("Received empty image data from AI.");
@@ -89,9 +114,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error(err);
       setError(
-        err instanceof Error
-          ? err.message
-          : "An unknown error occurred during visualization."
+        err instanceof Error ? err.message : "An unknown error occurred."
       );
     } finally {
       setIsLoading(false);
@@ -99,14 +122,9 @@ const App: React.FC = () => {
   }, [originalImageFile, selectedColor]);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      setRoute(window.location.hash || "");
-    };
-
+    const handleHashChange = () => setRoute(window.location.hash || "");
     window.addEventListener("hashchange", handleHashChange);
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-    };
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   const CurrentPage = routes[route] || MainContent;
@@ -125,7 +143,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col transition-colors duration-300">
       <Header
         onReset={handleReset}
         showReset={route === "" && originalImageUrl !== null}

@@ -1,29 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { auth } from "../firebase"; // Import auth from your firebase file
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  User,
-} from "firebase/auth";
+import { auth } from "../firebase";
+import { signOut, onAuthStateChanged, User } from "firebase/auth";
+import { AuthModal } from "./AuthModal"; // Ensure you create this file next
 
 interface HeaderProps {
   onReset?: () => void;
   showReset?: boolean;
 }
-
-const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({
-  href,
-  children,
-}) => (
-  <a
-    href={href}
-    className="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200 font-medium"
-  >
-    {children}
-  </a>
-);
 
 const ThemeToggle: React.FC = () => {
   const [isDark, setIsDark] = useState(() => {
@@ -50,32 +33,21 @@ const ThemeToggle: React.FC = () => {
       className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
       aria-label="Toggle theme"
     >
-      {isDark ? "🌙" : "Qs"}{" "}
-      {/* You can replace with your SVGs if you prefer */}
+      {isDark ? "🌙" : "☀️"}
     </button>
   );
 };
 
 export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // State for modal
 
-  // Listen for login state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
     return () => unsubscribe();
   }, []);
-
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert("Login failed. Check console for details.");
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -89,18 +61,25 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
     <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-black/20 sticky top-0 z-10">
       <div className="container mx-auto px-4 py-4 md:px-8">
         <div className="flex justify-between items-center">
-          <a href="#" className="cursor-pointer">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+          <a
+            href="#"
+            className="flex items-center gap-2 md:gap-3 cursor-pointer group"
+          >
+            <img
+              src="/logo.png"
+              alt="wallpaint logo"
+              className="w-12 h-12 md:w-16 md:h-16 object-contain transition-transform group-hover:scale-110"
+            />
+            <h1 className="text-xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100">
               wallpaint
             </h1>
           </a>
 
           <div className="flex items-center gap-4">
-            {/* Show User Info or Login Button */}
             {user ? (
               <div className="flex items-center gap-4">
                 <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {user.displayName}
+                  {user.displayName || user.email?.split("@")[0]}
                 </span>
                 {user.photoURL && (
                   <img
@@ -118,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
               </div>
             ) : (
               <button
-                onClick={handleLogin}
+                onClick={() => setIsAuthModalOpen(true)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
               >
                 Sign In
@@ -138,6 +117,12 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal Component */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </header>
   );
 };

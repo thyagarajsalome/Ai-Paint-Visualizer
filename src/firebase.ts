@@ -3,9 +3,10 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  // We use import.meta.env for Vite
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: "wallpaint-1b4e9.firebaseapp.com",
+  // Use your custom domain instead of the default firebaseapp.com URL
+  // This ensures your app and the auth iframe use the same domain, fixing redirect issues
+  authDomain: "wallpaint.in",
   projectId: "wallpaint-1b4e9",
   storageBucket: "wallpaint-1b4e9.firebasestorage.app",
   messagingSenderId: "656873300886",
