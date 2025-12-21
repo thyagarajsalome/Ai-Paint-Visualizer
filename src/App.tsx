@@ -10,6 +10,8 @@ import { TermsPage } from "./pages/Terms";
 import type { PaintColor } from "./types";
 import { visualizePaint } from "./services/geminiService";
 import { fileToBase64 } from "./utils/fileUtils";
+import { auth } from "./firebase";
+import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 
 const routes: { [key: string]: React.FC } = {
   "": MainContent,
@@ -22,7 +24,6 @@ const routes: { [key: string]: React.FC } = {
 
 const App: React.FC = () => {
   const [route, setRoute] = useState(window.location.hash || "");
-
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<PaintColor | null>(null);
@@ -32,6 +33,32 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle Passwordless Sign-in link
+  useEffect(() => {
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      let email = window.localStorage.getItem("emailForSignIn");
+
+      if (!email) {
+        email = window.prompt("Please provide your email for confirmation");
+      }
+
+      if (email) {
+        setIsLoading(true);
+        signInWithEmailLink(auth, email, window.location.href)
+          .then(() => {
+            window.localStorage.removeItem("emailForSignIn");
+            window.history.replaceState(
+              {},
+              document.title,
+              window.location.pathname
+            );
+          })
+          .catch((err) => setError("Magic link failed: " + err.message))
+          .finally(() => setIsLoading(false));
+      }
+    }
+  }, []);
 
   const handleImageUpload = (file: File) => {
     setOriginalImageFile(file);
@@ -69,20 +96,11 @@ const App: React.FC = () => {
     try {
       const base64Image = await fileToBase64(originalImageFile);
       const { data, mimeType } = base64Image;
-
       let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
       if (resultBase64) {
-        // --- CLEANUP LOGIC ---
-
-        // 1. Remove ALL whitespace/newlines (API can sometimes add these)
         resultBase64 = resultBase64.replace(/\s/g, "");
-
-        // 2. Remove the data URI prefix if the backend accidentally returned it
-        // (Case insensitive replacement)
         resultBase64 = resultBase64.replace(/^data:image\/[a-z]+;base64,/i, "");
-
-        // 3. Construct the final data URL for the <img> tag
         setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
       } else {
         throw new Error("Received empty image data from AI.");
@@ -90,9 +108,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error(err);
       setError(
-        err instanceof Error
-          ? err.message
-          : "An unknown error occurred during visualization."
+        err instanceof Error ? err.message : "An unknown error occurred."
       );
     } finally {
       setIsLoading(false);
@@ -100,14 +116,9 @@ const App: React.FC = () => {
   }, [originalImageFile, selectedColor]);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      setRoute(window.location.hash || "");
-    };
-
+    const handleHashChange = () => setRoute(window.location.hash || "");
     window.addEventListener("hashchange", handleHashChange);
-    return () => {
-      window.removeEventListener("hashchange", handleHashChange);
-    };
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   const CurrentPage = routes[route] || MainContent;
