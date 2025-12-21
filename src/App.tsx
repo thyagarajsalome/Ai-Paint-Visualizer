@@ -73,15 +73,16 @@ const App: React.FC = () => {
       let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
       if (resultBase64) {
-        // --- CORRECTED CLEANUP ORDER ---
+        // --- CLEANUP LOGIC ---
 
-        // 1. FIRST: Remove ALL whitespace/newlines anywhere in the string
+        // 1. Remove ALL whitespace/newlines (API can sometimes add these)
         resultBase64 = resultBase64.replace(/\s/g, "");
 
-        // 2. SECOND: Remove the prefix if it exists (Case insensitive)
+        // 2. Remove the data URI prefix if the backend accidentally returned it
+        // (Case insensitive replacement)
         resultBase64 = resultBase64.replace(/^data:image\/[a-z]+;base64,/i, "");
 
-        // 3. THIRD: Add the correct prefix manually
+        // 3. Construct the final data URL for the <img> tag
         setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
       } else {
         throw new Error("Received empty image data from AI.");
