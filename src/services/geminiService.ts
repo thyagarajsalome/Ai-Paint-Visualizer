@@ -5,7 +5,8 @@ import type { PaintColor } from "../types";
 // For now, replace this with your actual Cloud Run URL after deployment
 // Use the environment variable, or fallback to localhost for development
 const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:8080/api/visualize";
+  import.meta.env.VITE_BACKEND_URL ||
+  "https://wallpaint-backend-656873300886.us-central1.run.app";
 
 export const visualizePaint = async (
   base64ImageData: string,
