@@ -75,8 +75,16 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
     <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-black/20 sticky top-0 z-10">
       <div className="container mx-auto px-4 py-4 md:px-8">
         <div className="flex justify-between items-center">
-          <a href="#" className="cursor-pointer">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+          <a
+            href="#"
+            className="flex items-center gap-2 md:gap-3 cursor-pointer group"
+          >
+            <img
+              src="/logo.png"
+              alt="wallpaint logo"
+              className="w-12 h-12 md:w-16 md:h-16 object-contain transition-transform group-hover:scale-110"
+            />
+            <h1 className="text-xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100">
               wallpaint
             </h1>
           </a>
