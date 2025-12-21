@@ -56,13 +56,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setMessage(null);
 
     const actionCodeSettings = {
-      // Must be your authorized domain
+      // Must be your whitelisted custom domain: wallpaint.in
       url: window.location.origin,
       handleCodeInApp: true,
     };
 
     try {
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      // Save email locally to complete sign-in on the same device
       window.localStorage.setItem("emailForSignIn", email);
       setMessage("Magic link sent! Check your email to log in.");
     } catch (err: any) {
@@ -116,7 +117,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                placeholder="email@example.com"
               />
             </div>
 
@@ -131,14 +131,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                  placeholder="••••••••"
                 />
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-lg transform active:scale-[0.98]"
+              className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-lg"
             >
               {mode === "signin"
                 ? "Sign In"
@@ -158,13 +157,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             )}
           </form>
 
+          {/* Google Login & Footer Links remain the same */}
           <div className="mt-6 flex flex-col items-center gap-4">
-            <div className="w-full flex items-center gap-3">
-              <hr className="flex-grow border-gray-300 dark:border-gray-600" />
-              <span className="text-xs text-gray-400 font-medium">OR</span>
-              <hr className="flex-grow border-gray-300 dark:border-gray-600" />
-            </div>
-
             <button
               onClick={handleGoogleLogin}
               className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm"
@@ -176,8 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               />
               Continue with Google
             </button>
-
-            <div className="mt-4 text-sm text-gray-500 font-medium flex flex-wrap justify-center gap-x-4">
+            <div className="mt-4 text-sm text-gray-500 flex flex-wrap justify-center gap-x-4">
               {mode === "signin" ? (
                 <>
                   <button
@@ -185,7 +178,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       setMode("signup");
                       setError(null);
                     }}
-                    className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                    className="text-indigo-600 hover:underline"
                   >
                     New here? Register
                   </button>
@@ -194,7 +187,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       setMode("forgot");
                       setError(null);
                     }}
-                    className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                    className="text-indigo-600 hover:underline"
                   >
                     Forgot Password?
                   </button>
@@ -205,7 +198,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     setMode("signin");
                     setError(null);
                   }}
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold underline"
+                  className="text-indigo-600 hover:underline"
                 >
                   Back to Sign In
                 </button>

@@ -13,7 +13,7 @@ import { fileToBase64 } from "./utils/fileUtils";
 import { auth } from "./firebase";
 import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 
-const routes: { [key: string]: React.FC } = {
+const routes: { [key: string]: React.FC<any> } = {
   "": MainContent,
   "#about": AboutPage,
   "#policy": PolicyPage,
@@ -34,13 +34,14 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle Passwordless Sign-in link
+  // --- PASSWORDLESS SIGN-IN HANDLER ---
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let email = window.localStorage.getItem("emailForSignIn");
 
+      // Prompt for email if user switched devices/browsers
       if (!email) {
-        email = window.prompt("Please provide your email for confirmation");
+        email = window.prompt("Please confirm your email to complete sign-in:");
       }
 
       if (email) {
@@ -48,13 +49,17 @@ const App: React.FC = () => {
         signInWithEmailLink(auth, email, window.location.href)
           .then(() => {
             window.localStorage.removeItem("emailForSignIn");
+            // Clean up URL parameters for a cleaner UX
             window.history.replaceState(
               {},
               document.title,
               window.location.pathname
             );
           })
-          .catch((err) => setError("Magic link failed: " + err.message))
+          .catch((err) => {
+            console.error("Magic link error:", err);
+            setError("The sign-in link has expired or is invalid.");
+          })
           .finally(() => setIsLoading(false));
       }
     }
@@ -96,6 +101,7 @@ const App: React.FC = () => {
     try {
       const base64Image = await fileToBase64(originalImageFile);
       const { data, mimeType } = base64Image;
+
       let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
       if (resultBase64) {
@@ -137,7 +143,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col transition-colors duration-300">
       <Header
         onReset={handleReset}
         showReset={route === "" && originalImageUrl !== null}
