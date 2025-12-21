@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { auth } from "../firebase"; // Import auth from your firebase file
+import { auth } from "../firebase";
 import {
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect, // Definitive fix for COOP policy blocks
   signOut,
   onAuthStateChanged,
   User,
@@ -12,18 +12,6 @@ interface HeaderProps {
   onReset?: () => void;
   showReset?: boolean;
 }
-
-const NavLink: React.FC<{ href: string; children: React.ReactNode }> = ({
-  href,
-  children,
-}) => (
-  <a
-    href={href}
-    className="text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200 font-medium"
-  >
-    {children}
-  </a>
-);
 
 const ThemeToggle: React.FC = () => {
   const [isDark, setIsDark] = useState(() => {
@@ -50,8 +38,7 @@ const ThemeToggle: React.FC = () => {
       className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
       aria-label="Toggle theme"
     >
-      {isDark ? "🌙" : "Qs"}{" "}
-      {/* You can replace with your SVGs if you prefer */}
+      {isDark ? "🌙" : "☀️"}
     </button>
   );
 };
@@ -59,7 +46,6 @@ const ThemeToggle: React.FC = () => {
 export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  // Listen for login state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -70,10 +56,10 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      // signInWithRedirect does not require cross-window communication
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Login failed. Check console for details.");
     }
   };
 
@@ -96,7 +82,6 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
           </a>
 
           <div className="flex items-center gap-4">
-            {/* Show User Info or Login Button */}
             {user ? (
               <div className="flex items-center gap-4">
                 <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-200">
