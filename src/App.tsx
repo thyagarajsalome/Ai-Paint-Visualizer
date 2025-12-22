@@ -3,6 +3,7 @@ import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { MainContent, MainContentProps } from "./components/MainContent";
 import { CreditModal } from "./components/CreditModal";
+import { PricingPage } from "./pages/Pricing"; // New Page
 import { AboutPage } from "./pages/About";
 import { PolicyPage } from "./pages/Policy";
 import { DisclaimerPage } from "./pages/Disclaimer";
@@ -11,8 +12,13 @@ import { TermsPage } from "./pages/Terms";
 import type { PaintColor } from "./types";
 import { visualizePaint } from "./services/geminiService";
 import { fileToBase64 } from "./utils/fileUtils";
-import { auth } from "./firebase";
-import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
+import { auth, db } from "./firebase"; // Added db
+import {
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore"; // Added for live credit tracking
 
 const routes: { [key: string]: React.FC<any> } = {
   "": MainContent,
@@ -21,10 +27,12 @@ const routes: { [key: string]: React.FC<any> } = {
   "#disclaimer": DisclaimerPage,
   "#faq": FaqPage,
   "#terms": TermsPage,
+  "#pricing": PricingPage, // Added pricing route
 };
 
 const App: React.FC = () => {
   const [route, setRoute] = useState(window.location.hash || "");
+  const [userCredits, setUserCredits] = useState<number | null>(null);
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<PaintColor | null>(null);
@@ -36,14 +44,33 @@ const App: React.FC = () => {
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- LIVE CREDIT TRACKING ---
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Listen to the user's document in Firestore for live credit updates
+        const userDocRef = doc(db, "users", user.uid);
+        const unsubscribeCredits = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserCredits(docSnap.data().credits);
+          } else {
+            setUserCredits(2); // Default UI fallback for new users
+          }
+        });
+        return () => unsubscribeCredits();
+      } else {
+        setUserCredits(null);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
   // --- PASSWORDLESS SIGN-IN HANDLER ---
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let email = window.localStorage.getItem("emailForSignIn");
-
-      if (!email) {
+      if (!email)
         email = window.prompt("Please confirm your email to complete sign-in:");
-      }
 
       if (email) {
         setIsLoading(true);
@@ -56,10 +83,9 @@ const App: React.FC = () => {
               window.location.pathname
             );
           })
-          .catch((err) => {
-            console.error("Magic link error:", err);
-            setError("The sign-in link has expired or is invalid.");
-          })
+          .catch((err) =>
+            setError("The sign-in link has expired or is invalid.")
+          )
           .finally(() => setIsLoading(false));
       }
     }
@@ -72,9 +98,7 @@ const App: React.FC = () => {
     setError(null);
   };
 
-  const handleColorSelect = (color: PaintColor) => {
-    setSelectedColor(color);
-  };
+  const handleColorSelect = (color: PaintColor) => setSelectedColor(color);
 
   const handleReset = () => {
     setOriginalImageFile(null);
@@ -83,9 +107,7 @@ const App: React.FC = () => {
     setProcessedImageUrl(null);
     setIsLoading(false);
     setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleVisualize = useCallback(async () => {
@@ -105,14 +127,14 @@ const App: React.FC = () => {
       let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
       if (resultBase64) {
-        resultBase64 = resultBase64.replace(/\s/g, "");
-        resultBase64 = resultBase64.replace(/^data:image\/[a-z]+;base64,/i, "");
+        resultBase64 = resultBase64
+          .replace(/\s/g, "")
+          .replace(/^data:image\/[a-z]+;base64,/i, "");
         setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
       } else {
         throw new Error("Received empty image data from AI.");
       }
     } catch (err: any) {
-      console.error(err);
       if (err.message.includes("Insufficient credits")) {
         setIsCreditModalOpen(true);
       } else {
@@ -151,6 +173,7 @@ const App: React.FC = () => {
       <Header
         onReset={handleReset}
         showReset={route === "" && originalImageUrl !== null}
+        credits={userCredits} // Pass credits to header
       />
       <main className="container mx-auto p-4 md:p-8 flex-grow">
         {route === "" ? <MainContent {...mainContentProps} /> : <CurrentPage />}
