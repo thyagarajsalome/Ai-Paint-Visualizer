@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
@@ -45,6 +44,7 @@ const App: React.FC = () => {
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- LIVE CREDIT TRACKING ---
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -53,7 +53,7 @@ const App: React.FC = () => {
           if (docSnap.exists()) {
             setUserCredits(docSnap.data().credits);
           } else {
-            setUserCredits(2);
+            setUserCredits(2); // Default for new users
           }
         });
         return () => unsubscribeCredits();
@@ -64,10 +64,13 @@ const App: React.FC = () => {
     return () => unsubscribeAuth();
   }, []);
 
+  // --- PASSWORDLESS SIGN-IN HANDLER ---
   useEffect(() => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let email = window.localStorage.getItem("emailForSignIn");
-      if (!email) email = window.prompt("Confirm email to complete sign-in:");
+      if (!email)
+        email = window.prompt("Please confirm your email to complete sign-in:");
+
       if (email) {
         setIsLoading(true);
         signInWithEmailLink(auth, email, window.location.href)
@@ -79,7 +82,7 @@ const App: React.FC = () => {
               window.location.pathname
             );
           })
-          .catch(() => setError("The sign-in link has expired."))
+          .catch(() => setError("The sign-in link has expired or is invalid."))
           .finally(() => setIsLoading(false));
       }
     }
@@ -129,6 +132,7 @@ const App: React.FC = () => {
     try {
       const base64Image = await fileToBase64(originalImageFile);
       const { data, mimeType } = base64Image;
+
       let resultBase64 = await visualizePaint(data, mimeType, selectedColor);
 
       if (resultBase64) {
@@ -137,7 +141,7 @@ const App: React.FC = () => {
           .replace(/^data:image\/[a-z]+;base64,/i, "");
         setProcessedImageUrl(`data:image/png;base64,${resultBase64}`);
       } else {
-        throw new Error("AI failed to return image data.");
+        throw new Error("Received empty image data from AI.");
       }
     } catch (err: any) {
       if (err.message.includes("Insufficient credits")) {
@@ -173,7 +177,7 @@ const App: React.FC = () => {
     handleImageUpload,
     handleColorSelect,
     handleVisualize,
-    onDemoSelect: handleDemoSelect, // Pass demo logic
+    onDemoSelect: handleDemoSelect,
   };
 
   return (
@@ -183,7 +187,8 @@ const App: React.FC = () => {
         showReset={route === "" && originalImageUrl !== null}
         credits={userCredits}
       />
-      <main className="container mx-auto p-4 md:p-8 flex-grow">
+      {/* Reduced padding from p-4 md:p-8 to p-2 md:p-6 to remove ugly gaps */}
+      <main className="container mx-auto p-2 md:p-6 flex-grow transition-all duration-300">
         {route === "" ? <MainContent {...mainContentProps} /> : <CurrentPage />}
       </main>
       <Footer />
