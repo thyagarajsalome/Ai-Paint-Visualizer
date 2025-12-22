@@ -1,3 +1,7 @@
+/**
+ * Converts a File object to a Base64 string for the Gemini API.
+ * This extracts only the raw data portion to avoid decoding errors on the backend.
+ */
 export const fileToBase64 = (
   file: File
 ): Promise<{ data: string; mimeType: string }> => {
@@ -6,18 +10,26 @@ export const fileToBase64 = (
     reader.readAsDataURL(file);
     reader.onload = () => {
       const result = reader.result as string;
-      const [header, data] = result.split(',');
-      const mimeType = header.match(/:(.*?);/)?.[1] || file.type;
-      if (data && mimeType) {
-        resolve({ data, mimeType });
+
+      // Split the result: [0] is the header (data:image/png;base64), [1] is the raw data
+      const splitResult = result.split(",");
+      if (splitResult.length === 2) {
+        resolve({
+          data: splitResult[1], // This is the raw base64 string required by the API
+          mimeType: file.type,
+        });
       } else {
-        reject(new Error("Failed to parse file data."));
+        reject(new Error("Failed to parse file data format."));
       }
     };
     reader.onerror = (error) => reject(error);
   });
 };
 
+/**
+ * Converts a Data URL back to a File object.
+ * Useful for downloading or re-processing generated images.
+ */
 export const dataUrlToFile = async (
   dataUrl: string,
   filename: string
