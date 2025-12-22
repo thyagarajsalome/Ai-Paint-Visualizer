@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { MainContent, MainContentProps } from "./components/MainContent";
+import { CreditModal } from "./components/CreditModal";
 import { AboutPage } from "./pages/About";
 import { PolicyPage } from "./pages/Policy";
 import { DisclaimerPage } from "./pages/Disclaimer";
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- PASSWORDLESS SIGN-IN HANDLER ---
@@ -39,7 +41,6 @@ const App: React.FC = () => {
     if (isSignInWithEmailLink(auth, window.location.href)) {
       let email = window.localStorage.getItem("emailForSignIn");
 
-      // Prompt for email if user switched devices/browsers
       if (!email) {
         email = window.prompt("Please confirm your email to complete sign-in:");
       }
@@ -49,7 +50,6 @@ const App: React.FC = () => {
         signInWithEmailLink(auth, email, window.location.href)
           .then(() => {
             window.localStorage.removeItem("emailForSignIn");
-            // Clean up URL parameters for a cleaner UX
             window.history.replaceState(
               {},
               document.title,
@@ -111,11 +111,15 @@ const App: React.FC = () => {
       } else {
         throw new Error("Received empty image data from AI.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred."
-      );
+      if (err.message.includes("Insufficient credits")) {
+        setIsCreditModalOpen(true);
+      } else {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -152,6 +156,10 @@ const App: React.FC = () => {
         {route === "" ? <MainContent {...mainContentProps} /> : <CurrentPage />}
       </main>
       <Footer />
+      <CreditModal
+        isOpen={isCreditModalOpen}
+        onClose={() => setIsCreditModalOpen(false)}
+      />
     </div>
   );
 };
