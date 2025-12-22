@@ -58,18 +58,20 @@ const verifyToken = async (req, res, next) => {
 // ---------------------------------------------------------
 // 3. The Visualization Endpoint
 // ---------------------------------------------------------
+// backend-api/server.js
 app.post("/api/visualize", verifyToken, async (req, res) => {
   try {
     const userId = req.user.uid;
     const userRef = db.collection("users").doc(userId);
     let doc = await userRef.get();
 
-    // Initialize new users with free credits
+    // Initializes new users with exactly 2 free credits
     if (!doc.exists) {
-      await userRef.set({ credits: 50, email: req.user.email || "" });
+      await userRef.set({ credits: 2, email: req.user.email || "" });
       doc = await userRef.get();
     }
 
+    // Blocks generation if credits are less than 1
     if (doc.data().credits < 1)
       return res.status(403).json({ error: "Insufficient credits" });
 
