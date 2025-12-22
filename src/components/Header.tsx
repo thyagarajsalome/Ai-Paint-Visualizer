@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
-import { signOut, onAuthStateChanged, User } from "firebase/auth";
+import { signOut, onAuthStateChanged, User, deleteUser } from "firebase/auth";
 import { AuthModal } from "./AuthModal";
 
 interface HeaderProps {
   onReset?: () => void;
   showReset?: boolean;
-  credits?: number | null; // Added to track balance
+  credits?: number | null; // Tracks user credit balance
 }
 
+// Ensure ThemeToggle is defined BEFORE Header or properly exported
 const ThemeToggle: React.FC = () => {
   const [isDark, setIsDark] = useState(() => {
     return (
@@ -62,6 +63,30 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  // Logic for store-compliant account deletion
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your account? This will permanently remove your credit balance and login data. This action cannot be undone."
+    );
+
+    if (confirmed && auth.currentUser) {
+      try {
+        await deleteUser(auth.currentUser);
+        alert("Account deleted successfully.");
+        window.location.reload();
+      } catch (error: any) {
+        console.error("Deletion failed:", error);
+        if (error.code === "auth/requires-recent-login") {
+          alert(
+            "For security, please sign out and sign back in before deleting your account."
+          );
+        } else {
+          alert("An error occurred. Please contact support@wallpaint.in.");
+        }
+      }
+    }
+  };
+
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-black/20 sticky top-0 z-10">
       <div className="container mx-auto px-4 py-4 md:px-8">
@@ -83,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-3 md:gap-6">
-                {/* Credits Display Badge */}
+                {/* Credit Balance Badge */}
                 <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-800 shadow-sm">
                   <span className="text-[10px] md:text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                     Credits
@@ -112,9 +137,17 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {user.displayName || user.email?.split("@")[0]}
-                  </span>
+                  <div className="hidden lg:flex flex-col items-end leading-tight">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {user.displayName || user.email?.split("@")[0]}
+                    </span>
+                    <button
+                      onClick={handleDeleteAccount}
+                      className="text-[10px] text-red-400 hover:text-red-600 underline transition-colors"
+                    >
+                      Delete Account
+                    </button>
+                  </div>
                   {user.photoURL && (
                     <img
                       src={user.photoURL}
@@ -124,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                   <button
                     onClick={handleLogout}
-                    className="text-xs md:text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                    className="text-xs md:text-sm font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 transition-colors"
                   >
                     Log Out
                   </button>
@@ -142,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
             {showReset && onReset && (
               <button
                 onClick={onReset}
-                className="hidden md:block text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
+                className="hidden md:block text-gray-500 hover:text-gray-700 dark:text-gray-400 font-medium"
                 aria-label="Reset"
               >
                 Reset
