@@ -88,19 +88,23 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-black/20 sticky top-0 z-10">
-      <div className="container mx-auto px-4 py-4 md:px-8">
+    <header className="bg-white dark:bg-gray-800 shadow-md dark:shadow-black/20 sticky top-0 z-50">
+      {/* Reduced vertical padding from py-4 to py-2 to keep navbar height in check with 2x logo */}
+      <div className="container mx-auto px-4 py-2 md:px-8">
         <div className="flex justify-between items-center">
+          {/* Reduced gap from gap-2 to gap-1 for a tighter brand lockup */}
           <a
             href="#"
-            className="flex items-center gap-2 md:gap-3 cursor-pointer group"
+            className="flex items-center gap-1 md:gap-2 cursor-pointer group"
           >
             <img
               src="/logo.png"
               alt="wallpaint logo"
-              className="w-12 h-12 md:w-16 md:h-16 object-contain transition-transform group-hover:scale-110"
+              // Increased size: Original was w-12/16, now 2x (w-24/32). Added responsive sizing.
+              className="w-24 h-24 md:w-32 md:h-32 object-contain transition-transform group-hover:scale-105"
             />
-            <h1 className="text-xl md:text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+            {/* Added -ml-2 to reduce visual gap between logo and text */}
+            <h1 className="text-xl md:text-3xl font-black text-gray-800 dark:text-gray-100 -ml-2 tracking-tighter">
               wallpaint
             </h1>
           </a>
