@@ -86,7 +86,7 @@ export const PolicyPage: React.FC = () => {
           their account and associated data (including email and credit balance)
           at any time. You may initiate account deletion directly through the
           settings menu in the wallpaint application or by contacting us at
-          support@wallpaint.in. Requests via email will be processed within 7
+          contact@toolwebsite.in Requests via email will be processed within 7
           business days.
         </p>
       </PolicySection>
@@ -103,7 +103,7 @@ export const PolicyPage: React.FC = () => {
         <p>
           If you have questions or comments about this Privacy Policy, please
           contact us through the information provided on our Contact page or
-          email us at support@wallpaint.in.
+          email us at contact@toolwebsite.in
         </p>
       </PolicySection>
     </div>
