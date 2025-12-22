@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
 import { signOut, onAuthStateChanged, User } from "firebase/auth";
-import { AuthModal } from "./AuthModal"; // Ensure you create this file next
+import { AuthModal } from "./AuthModal";
 
 interface HeaderProps {
   onReset?: () => void;
   showReset?: boolean;
+  credits?: number | null; // Added to track balance
 }
 
 const ThemeToggle: React.FC = () => {
@@ -38,9 +39,13 @@ const ThemeToggle: React.FC = () => {
   );
 };
 
-export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onReset,
+  showReset,
+  credits,
+}) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // State for modal
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -77,28 +82,58 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
 
           <div className="flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-4">
-                <span className="hidden md:inline text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {user.displayName || user.email?.split("@")[0]}
-                </span>
-                {user.photoURL && (
-                  <img
-                    src={user.photoURL}
-                    alt="Profile"
-                    className="w-8 h-8 rounded-full border border-gray-300"
-                  />
-                )}
-                <button
-                  onClick={handleLogout}
-                  className="text-sm bg-red-100 text-red-600 px-3 py-1.5 rounded-md hover:bg-red-200 transition-colors"
-                >
-                  Sign Out
-                </button>
+              <div className="flex items-center gap-3 md:gap-6">
+                {/* Credits Display Badge */}
+                <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-800 shadow-sm">
+                  <span className="text-[10px] md:text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    Credits
+                  </span>
+                  <span className="text-sm font-black text-indigo-700 dark:text-indigo-200">
+                    {credits ?? 0}
+                  </span>
+                  <a
+                    href="#pricing"
+                    className="ml-1 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                    title="Buy more credits"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {user.displayName || user.email?.split("@")[0]}
+                  </span>
+                  {user.photoURL && (
+                    <img
+                      src={user.photoURL}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full border border-gray-300 shadow-sm"
+                    />
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="text-xs md:text-sm font-semibold text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                  >
+                    Log Out
+                  </button>
+                </div>
               </div>
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+                className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-md active:scale-95"
               >
                 Sign In
               </button>
@@ -107,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
             {showReset && onReset && (
               <button
                 onClick={onReset}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="hidden md:block text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
                 aria-label="Reset"
               >
                 Reset
@@ -118,7 +153,6 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset }) => {
         </div>
       </div>
 
-      {/* Auth Modal Component */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
