@@ -6,7 +6,7 @@ import type { PaintColor } from "../types";
 // Use the environment variable, or fallback to localhost for development
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
-  "https://wallpaint-backend-656873300886.us-central1.run.app";
+  "https://wallpaint-backend-656873300886.us-central1.run.app/api/visualize"; // Add /api/visualize
 
 export const visualizePaint = async (
   base64ImageData: string,
