@@ -69,7 +69,7 @@ export const AboutPage: React.FC = () => {
             href="mailto:contact@toolwebsite"
             className="text-indigo-600 dark:text-indigo-400 hover:underline"
           >
-            contact@toolwebsite
+          contact@toolwebsite.in
           </a>
         </p>
       </PageSection>
