@@ -58,30 +58,6 @@ export const AboutPage: React.FC = () => {
         </ol>
       </PageSection>
 
-      <PageSection title="Technology Stack">
-        <p>
-          This web application is built with a modern, performant technology
-          stack:
-        </p>
-        <ul className="list-disc list-inside space-y-2 pl-4">
-          <li>
-            <strong>Frontend:</strong> Built with React and TypeScript for a
-            robust and interactive user interface.
-          </li>
-          <li>
-            <strong>Styling:</strong> Styled using Tailwind CSS for a clean,
-            responsive, and utility-first design.
-          </li>
-          <li>
-            <strong>AI Engine:</strong> Powered by the{" "}
-            <code className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1 rounded">
-              gemini-2.5-flash-image
-            </code>{" "}
-            model via the Google Gemini API.
-          </li>
-        </ul>
-      </PageSection>
-
       {/* --- ADD THIS NEW SECTION --- */}
       <PageSection title="Contact Us">
         <p>
@@ -93,7 +69,7 @@ export const AboutPage: React.FC = () => {
             href="mailto:contact@toolwebsite"
             className="text-indigo-600 dark:text-indigo-400 hover:underline"
           >
-            contact@toolwebsite
+          contact@toolwebsite.in
           </a>
         </p>
       </PageSection>
