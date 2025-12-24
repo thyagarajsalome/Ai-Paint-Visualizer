@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { auth } from "../firebase";
+import { auth } from "../firebase"; //
 
-// Define regional pricing configuration
 // Define regional pricing configuration
 const PRICING_CONFIG = {
   IN: {
@@ -9,7 +8,7 @@ const PRICING_CONFIG = {
     symbol: "₹",
     rates: [
       { credits: 15, amount: 299, popular: false },
-      { credits: 30, amount: 499, popular: true }, // Best value
+      { credits: 30, amount: 499, popular: true },
       { credits: 50, amount: 999, popular: false },
     ],
   },
@@ -18,8 +17,8 @@ const PRICING_CONFIG = {
     symbol: "$",
     rates: [
       { credits: 15, amount: 9.99, popular: false },
-      { credits: 30, amount: 14.99, popular: true }, // Adjusted (better scaling)
-      { credits: 50, amount: 19.99, popular: false }, // Adjusted
+      { credits: 30, amount: 14.99, popular: true },
+      { credits: 50, amount: 19.99, popular: false },
     ],
   },
 };
@@ -44,27 +43,26 @@ const PricingCard: React.FC<{
     try {
       const token = await user.getIdToken();
 
+      // FIX: Ensure this calls the base URL without extra path segments
+      const baseUrl = import.meta.env.VITE_BACKEND_URL;
+
       // 1. Create Order on Backend
-      const orderRes = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/payments/create-order`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ amount, currency }),
-        }
-      );
+      const orderRes = await fetch(`${baseUrl}/api/payments/create-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amount, currency }),
+      });
 
       const orderData = await orderRes.json();
-
       if (!orderRes.ok)
         throw new Error(orderData.error || "Failed to create order");
 
       // 2. Open Razorpay Checkout
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Add this to your .env
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "wallpaint",
@@ -72,22 +70,19 @@ const PricingCard: React.FC<{
         order_id: orderData.id,
         handler: async (response: any) => {
           // 3. Verify Payment on Backend
-          const verifyRes = await fetch(
-            `${import.meta.env.VITE_BACKEND_URL}/api/payments/verify`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                creditAmount: credits,
-              }),
-            }
-          );
+          const verifyRes = await fetch(`${baseUrl}/api/payments/verify`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              creditAmount: credits,
+            }),
+          });
 
           if (verifyRes.ok) {
             alert("Payment Successful! Credits added to your account.");
