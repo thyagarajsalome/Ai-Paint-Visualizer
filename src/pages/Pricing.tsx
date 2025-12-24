@@ -44,13 +44,15 @@ const PricingCard: React.FC<{
       const token = await user.getIdToken();
 
       /**
-       * FIXED: URL SANITATION
-       * Ensures VITE_BACKEND_URL points to the root domain and
-       * doesn't double up on paths.
+       * FIXED: URL SANITATION & ROBUST ERROR HANDLING
+       * Ensures VITE_BACKEND_URL points to the root domain.
+       * Specifically removes /api/visualize if it was accidentally included.
        */
       const rawBaseUrl =
         import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
-      const baseUrl = rawBaseUrl.replace(/\/$/, "");
+      const baseUrl = rawBaseUrl
+        .replace(/\/$/, "")
+        .replace(/\/api\/visualize$/, "");
 
       // 1. Create Order on Backend
       const orderRes = await fetch(`${baseUrl}/api/payments/create-order`, {
@@ -62,9 +64,19 @@ const PricingCard: React.FC<{
         body: JSON.stringify({ amount, currency }),
       });
 
+      // Robust check for non-JSON or error responses
+      if (!orderRes.ok) {
+        let errorMsg = "Failed to create order";
+        try {
+          const data = await orderRes.json();
+          errorMsg = data.error || errorMsg;
+        } catch (e) {
+          errorMsg = `Server Error: ${orderRes.status} ${orderRes.statusText}`;
+        }
+        throw new Error(errorMsg);
+      }
+
       const orderData = await orderRes.json();
-      if (!orderRes.ok)
-        throw new Error(orderData.error || "Failed to create order");
 
       // 2. Open Razorpay Checkout
       const options = {
@@ -94,11 +106,15 @@ const PricingCard: React.FC<{
             alert("Payment Successful! Your credits will update in a moment.");
             window.location.hash = ""; // Redirect to home
           } else {
-            const errorText = await verifyRes.text();
-            console.error("Verification failed:", errorText);
-            alert(
-              "Payment verification failed. Please contact support@wallpaint.in"
-            );
+            let verifyError = "Payment verification failed.";
+            try {
+              const data = await verifyRes.json();
+              verifyError = data.error || verifyError;
+            } catch (e) {
+              verifyError = `Verification Error: ${verifyRes.status}`;
+            }
+            console.error("Verification failed:", verifyError);
+            alert(`${verifyError} Please contact support@wallpaint.in`);
           }
         },
         prefill: {
