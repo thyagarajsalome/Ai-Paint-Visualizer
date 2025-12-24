@@ -8,9 +8,9 @@ const PRICING_CONFIG = {
     currency: "INR",
     symbol: "₹",
     rates: [
-      { credits: 15, amount: 799, popular: false },
-      { credits: 30, amount: 1499, popular: true }, // Best value
-      { credits: 50, amount: 1999, popular: false },
+      { credits: 15, amount: 299, popular: false },
+      { credits: 30, amount: 499, popular: true }, // Best value
+      { credits: 50, amount: 999, popular: false },
     ],
   },
   DEFAULT: {
