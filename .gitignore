@@ -23,3 +23,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Security
+backend-api/.env
+backend-api/service-account-key.json
