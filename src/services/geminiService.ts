@@ -1,12 +1,16 @@
-import { auth } from "../firebase"; // Ensure you have created src/firebase.ts
+import { auth } from "../firebase";
 import type { PaintColor } from "../types";
 
-// You should eventually put this URL in your .env file as VITE_BACKEND_URL
-// For now, replace this with your actual Cloud Run URL after deployment
-// Use the environment variable, or fallback to localhost for development
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ||
-  "https://wallpaint-backend-656873300886.us-central1.run.app/api/visualize"; // Add /api/visualize
+/**
+ * FIXED BACKEND_URL CONSTRUCTION
+ * This ensures the path is appended correctly regardless of whether
+ * VITE_BACKEND_URL contains a trailing slash or just the base domain.
+ */
+const getBackendUrl = () => {
+  const base = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+  // Remove any trailing slash and append the specific visualization endpoint
+  return `${base.replace(/\/$/, "")}/api/visualize`;
+};
 
 export const visualizePaint = async (
   base64ImageData: string,
@@ -23,8 +27,8 @@ export const visualizePaint = async (
     // 2. Get the secure Access Token (JWT) to send to the backend
     const token = await user.getIdToken();
 
-    // 3. Send the request to YOUR Backend (not Google directly)
-    const response = await fetch(BACKEND_URL, {
+    // 3. Send the request to your Backend
+    const response = await fetch(getBackendUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
