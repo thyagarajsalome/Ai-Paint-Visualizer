@@ -44,18 +44,34 @@ const App: React.FC = () => {
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- LIVE CREDIT TRACKING ---
+  // --- OPTIMIZED LIVE CREDIT TRACKING ---
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         const userDocRef = doc(db, "users", user.uid);
-        const unsubscribeCredits = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUserCredits(docSnap.data().credits);
-          } else {
-            setUserCredits(2); // Default for new users
+
+        // Listen for real-time changes directly from the server
+        const unsubscribeCredits = onSnapshot(
+          userDocRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const serverCredits = docSnap.data().credits;
+              // Force the UI state to match the exact Firestore value
+              setUserCredits(serverCredits);
+              console.log(
+                "Real-time credits synced from Firestore:",
+                serverCredits
+              );
+            } else {
+              // Default for new users if document doesn't exist yet
+              setUserCredits(2);
+            }
+          },
+          (err) => {
+            console.error("Firestore Credit Listener Error:", err);
           }
-        });
+        );
+
         return () => unsubscribeCredits();
       } else {
         setUserCredits(null);
@@ -95,7 +111,6 @@ const App: React.FC = () => {
     setError(null);
   };
 
-  // Helper to handle Demo images
   const handleDemoSelect = async (url: string) => {
     setIsLoading(true);
     try {
@@ -187,7 +202,6 @@ const App: React.FC = () => {
         showReset={route === "" && originalImageUrl !== null}
         credits={userCredits}
       />
-      {/* Reduced padding from p-4 md:p-8 to p-2 md:p-6 to remove ugly gaps */}
       <main className="container mx-auto p-2 md:p-6 flex-grow transition-all duration-300">
         {route === "" ? <MainContent {...mainContentProps} /> : <CurrentPage />}
       </main>
