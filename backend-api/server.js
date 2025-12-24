@@ -1,11 +1,12 @@
 const express = require("express");
 const admin = require("firebase-admin");
-const { GoogleGenAI } = require("@google/genai"); // New unified SDK
+const { GoogleGenAI } = require("@google/genai");
 const cors = require("cors");
+const Razorpay = require("razorpay"); // Added Razorpay
+const crypto = require("crypto"); // Built-in node module for signature verification
 require("dotenv").config();
 
 // 1. Initialize Firebase Admin
-// CRITICAL: Ensure this file is IN your backend-api folder during deployment
 const serviceAccount = require("./service-account-key.json");
 
 admin.initializeApp({
@@ -14,13 +15,18 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// 2. Initialize the GoogleGenAI client
-// Uses the unified SDK structure
+// 2. Initialize Razorpay (Test Mode)
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// 3. Initialize the GoogleGenAI client
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const app = express();
 
-// Enable CORS for your production domains and local testing
+// Enable CORS
 app.use(
   cors({
     origin: [
@@ -33,10 +39,9 @@ app.use(
   })
 );
 
-// High limit required for base64 image data
 app.use(express.json({ limit: "20mb" }));
 
-// Health Check to verify connectivity
+// Health Check
 app.get("/health", (req, res) =>
   res.json({ status: "ok", message: "Backend is live!" })
 );
@@ -56,35 +61,91 @@ const verifyToken = async (req, res, next) => {
 };
 
 // ---------------------------------------------------------
-// 3. The Visualization Endpoint
+// 4. Payment Endpoints
 // ---------------------------------------------------------
-// backend-api/server.js
+
+// A. Create a Razorpay Order
+app.post("/api/payments/create-order", verifyToken, async (req, res) => {
+  try {
+    const { amount, currency } = req.body;
+
+    const options = {
+      amount: Math.round(amount * 100), // amount in smallest currency unit (paise/cents)
+      currency: currency || "INR",
+      receipt: `receipt_${req.user.uid.substring(0, 10)}_${Date.now()}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    console.error("Order Creation Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// B. Verify Signature and Add Credits
+app.post("/api/payments/verify", verifyToken, async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      creditAmount,
+    } = req.body;
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    // Verify signature using crypto
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature === razorpay_signature) {
+      // Payment is authentic, update user credits
+      const userRef = db.collection("users").doc(req.user.uid);
+
+      await userRef.update({
+        credits: admin.firestore.FieldValue.increment(creditAmount),
+        lastPurchase: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      res.json({
+        status: "ok",
+        message: "Payment verified and credits added.",
+      });
+    } else {
+      res.status(400).json({ error: "Invalid payment signature" });
+    }
+  } catch (error) {
+    console.error("Payment Verification Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---------------------------------------------------------
+// 5. The Visualization Endpoint
+// ---------------------------------------------------------
 app.post("/api/visualize", verifyToken, async (req, res) => {
   try {
     const userId = req.user.uid;
     const userRef = db.collection("users").doc(userId);
     let doc = await userRef.get();
 
-    // Initializes new users with exactly 2 free credits
     if (!doc.exists) {
       await userRef.set({ credits: 2, email: req.user.email || "" });
       doc = await userRef.get();
     }
 
-    // Blocks generation if credits are less than 1
     if (doc.data().credits < 1)
       return res.status(403).json({ error: "Insufficient credits" });
 
     let { imageBase64, mimeType, color } = req.body;
 
-    // --- FIX: Clean the Base64 string ---
-    // Extract only the raw data portion if a Data URL header is present
     const cleanBase64 = imageBase64.includes(",")
       ? imageBase64.split(",")[1]
       : imageBase64.replace(/\s/g, "");
 
-    // 4. Call Gemini 2.5 Flash Image Model
-    // This model supports native IMAGE output modalities
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
       config: {
@@ -100,7 +161,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
             {
               inlineData: {
                 mimeType: mimeType || "image/jpeg",
-                data: cleanBase64, // Use the cleaned variable
+                data: cleanBase64,
               },
             },
           ],
@@ -108,7 +169,6 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       ],
     });
 
-    // 5. Extract the generated image from the response parts
     const candidate = response.candidates[0];
     const imagePart = candidate.content.parts.find((p) => p.inlineData);
 
@@ -117,7 +177,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       throw new Error(textReason?.text || "AI failed to return an image.");
     }
 
-    // Deduct 1 Credit on success
+    // Deduct credit only on AI success
     await userRef.update({
       credits: admin.firestore.FieldValue.increment(-1),
     });
@@ -129,6 +189,5 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
   }
 });
 
-// CRITICAL: Bind to 0.0.0.0 for Cloud Run compatibility
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`Backend live on port ${PORT}`));
