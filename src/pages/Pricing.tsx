@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { auth } from "../firebase"; //
+import { auth } from "../firebase";
 
 // Define regional pricing configuration
 const PRICING_CONFIG = {
@@ -43,8 +43,14 @@ const PricingCard: React.FC<{
     try {
       const token = await user.getIdToken();
 
-      // FIX: Ensure this calls the base URL without extra path segments
-      const baseUrl = import.meta.env.VITE_BACKEND_URL;
+      /**
+       * FIXED: URL SANITATION
+       * Ensures VITE_BACKEND_URL points to the root domain and
+       * doesn't double up on paths.
+       */
+      const rawBaseUrl =
+        import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+      const baseUrl = rawBaseUrl.replace(/\/$/, "");
 
       // 1. Create Order on Backend
       const orderRes = await fetch(`${baseUrl}/api/payments/create-order`, {
@@ -85,23 +91,34 @@ const PricingCard: React.FC<{
           });
 
           if (verifyRes.ok) {
-            alert("Payment Successful! Credits added to your account.");
+            alert("Payment Successful! Your credits will update in a moment.");
             window.location.hash = ""; // Redirect to home
           } else {
-            alert("Payment verification failed. Please contact support.");
+            const errorText = await verifyRes.text();
+            console.error("Verification failed:", errorText);
+            alert(
+              "Payment verification failed. Please contact support@wallpaint.in"
+            );
           }
         },
         prefill: {
           email: user.email,
+          name: user.displayName || "",
         },
         theme: {
           color: "#4f46e5",
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+          },
         },
       };
 
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err: any) {
+      console.error("Payment Flow Error:", err);
       alert(err.message);
     } finally {
       setIsProcessing(false);
@@ -135,9 +152,9 @@ const PricingCard: React.FC<{
       <button
         onClick={handleBuyNow}
         disabled={isProcessing}
-        className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-md disabled:bg-gray-400"
+        className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-md disabled:bg-gray-400 transition-colors"
       >
-        {isProcessing ? "Processing..." : "Buy Now"}
+        {isProcessing ? "Opening Secure Checkout..." : "Buy Now"}
       </button>
     </div>
   );
