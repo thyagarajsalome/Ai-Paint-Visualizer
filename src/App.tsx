@@ -50,17 +50,20 @@ const App: React.FC = () => {
       if (user) {
         const userDocRef = doc(db, "users", user.uid);
 
-        // Use onSnapshot to listen for real-time changes in Firestore
+        // Listen for real-time changes directly from the server
         const unsubscribeCredits = onSnapshot(
           userDocRef,
           (docSnap) => {
             if (docSnap.exists()) {
-              const data = docSnap.data();
-              // This force-updates the UI with whatever is in the actual database
-              setUserCredits(data.credits);
-              console.log("Syncing credits from Firestore:", data.credits);
+              const serverCredits = docSnap.data().credits;
+              // Force the UI state to match the exact Firestore value
+              setUserCredits(serverCredits);
+              console.log(
+                "Real-time credits synced from Firestore:",
+                serverCredits
+              );
             } else {
-              // New user handling: Default to 2 if no doc exists yet
+              // Default for new users if document doesn't exist yet
               setUserCredits(2);
             }
           },
