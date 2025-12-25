@@ -2,26 +2,27 @@ const express = require("express");
 const admin = require("firebase-admin");
 const { GoogleGenAI } = require("@google/genai");
 const cors = require("cors");
-const Razorpay = require("razorpay");
 const crypto = require("crypto");
 require("dotenv").config();
 
 // ---------------------------------------------------------
-// 1. Initialize Firebase Admin (Dynamic for Cloud Run)
+// 1. Initialize Firebase Admin (Fixed for Cloud Run)
 // ---------------------------------------------------------
 let serviceAccount;
+let db;
 
 /**
- * FIXED: Cloud Run Compatibility
  * Checks if the service account JSON is provided as an environment variable (Production).
  * Otherwise, falls back to the local file (Development).
  */
 if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
   try {
     serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    console.log("Successfully parsed Service Account JSON from environment.");
   } catch (err) {
     console.error(
-      "Error parsing GOOGLE_SERVICE_ACCOUNT_JSON environment variable"
+      "CRITICAL: Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON environment variable:",
+      err
     );
     process.exit(1);
   }
@@ -29,6 +30,7 @@ if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
   try {
     // Falls back to local file for development
     serviceAccount = require("./service-account-key.json");
+    console.log("Using local service-account-key.json");
   } catch (err) {
     console.warn(
       "service-account-key.json not found. Ensure environment variables are set for production."
@@ -36,22 +38,23 @@ if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
   }
 }
 
+// Ensure Admin is initialized BEFORE creating db reference
 if (serviceAccount) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    db = admin.firestore();
+    console.log("Firestore initialized successfully.");
+  } catch (err) {
+    console.error("CRITICAL: Firebase initialization failed:", err);
+    process.exit(1);
+  }
 }
 
-const db = admin.firestore();
-
 // ---------------------------------------------------------
-// 2. Initialize Clients
+// 2. Initialize AI Clients
 // ---------------------------------------------------------
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
 const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
 const app = express();
@@ -91,59 +94,7 @@ const verifyToken = async (req, res, next) => {
 };
 
 // ---------------------------------------------------------
-// 3. Payment Endpoints
-// ---------------------------------------------------------
-app.post("/api/payments/create-order", verifyToken, async (req, res) => {
-  try {
-    const { amount, currency } = req.body;
-    const options = {
-      amount: Math.round(amount * 100),
-      currency: currency || "INR",
-      receipt: `receipt_${req.user.uid.substring(0, 10)}_${Date.now()}`,
-    };
-    const order = await razorpay.orders.create(options);
-    res.json(order);
-  } catch (error) {
-    console.error("Order Creation Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/payments/verify", verifyToken, async (req, res) => {
-  try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      creditAmount,
-    } = req.body;
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest("hex");
-
-    if (expectedSignature === razorpay_signature) {
-      const userRef = db.collection("users").doc(req.user.uid);
-      await userRef.update({
-        credits: admin.firestore.FieldValue.increment(creditAmount),
-        lastPurchase: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      res.json({
-        status: "ok",
-        message: "Payment verified and credits added.",
-      });
-    } else {
-      res.status(400).json({ error: "Invalid payment signature" });
-    }
-  } catch (error) {
-    console.error("Payment Verification Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ---------------------------------------------------------
-// 4. Visualization Endpoint
+// 3. The Visualization Endpoint
 // ---------------------------------------------------------
 app.post("/api/visualize", verifyToken, async (req, res) => {
   try {
@@ -151,6 +102,7 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     const userRef = db.collection("users").doc(userId);
     let doc = await userRef.get();
 
+    // Default 2 credits for new users
     if (!doc.exists) {
       await userRef.set({ credits: 2, email: req.user.email || "" });
       doc = await userRef.get();
@@ -172,10 +124,18 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
     ]);
 
     const response = await result.response;
+    const imagePart = response.candidates[0].content.parts.find(
+      (p) => p.inlineData
+    );
 
-    // Logic for deducting credits and returning image...
+    if (!imagePart) {
+      throw new Error("AI failed to return an image.");
+    }
+
+    // Deduct credit only on AI success
     await userRef.update({ credits: admin.firestore.FieldValue.increment(-1) });
-    res.json({ image: cleanBase64 }); // Example return
+
+    res.json({ image: imagePart.inlineData.data });
   } catch (err) {
     console.error("Visualization Error:", err);
     res.status(500).json({ error: err.message });
@@ -183,10 +143,11 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
 });
 
 // ---------------------------------------------------------
-// 5. Server Start (FIXED for Cloud Run)
+// 4. Server Start (FIXED for Cloud Run)
 // ---------------------------------------------------------
 const PORT = process.env.PORT || 8080;
-// Using 0.0.0.0 is mandatory for Cloud Run to route traffic
+
+// MUST use '0.0.0.0' for Cloud Run
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Backend server listening on port ${PORT}`);
 });
