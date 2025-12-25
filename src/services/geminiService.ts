@@ -1,10 +1,19 @@
 import { auth } from "../firebase";
 import type { PaintColor } from "../types";
 
-// Construct the URL dynamically to avoid path doubling
+/**
+ * FIXED: URL SANITATION
+ * Constructs the URL dynamically and prevents path doubling.
+ * It removes trailing slashes and ensures /api/visualize is only added once.
+ */
 const getBackendUrl = () => {
-  const base = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
-  return `${base.replace(/\/$/, "")}/api/visualize`;
+  const rawBase = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+
+  // 1. Remove trailing slash
+  // 2. Remove /api/visualize if it was accidentally included in the env variable
+  const cleanBase = rawBase.replace(/\/$/, "").replace(/\/api\/visualize$/, "");
+
+  return `${cleanBase}/api/visualize`;
 };
 
 export const visualizePaint = async (
@@ -31,9 +40,17 @@ export const visualizePaint = async (
       }),
     });
 
+    // Check for 404 or other non-OK responses
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to visualize paint.");
+      let errorMessage = "Failed to visualize paint.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // Fallback if the response is not JSON (like an HTML 404 page)
+        errorMessage = `Server Error: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
