@@ -4,14 +4,12 @@ import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  // Use your custom domain instead of the default firebaseapp.com URL
-  // This ensures your app and the auth iframe use the same domain, fixing redirect issues
-  authDomain: "wallpaint.in",
-  projectId: "wallpaint-1b4e9",
-  storageBucket: "wallpaint-1b4e9.firebasestorage.app",
-  messagingSenderId: "656873300886",
-  appId: "1:656873300886:web:22a3073f85cc05d326f3b7",
-  measurementId: "G-VXF82LV21C",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);

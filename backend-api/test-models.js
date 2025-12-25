@@ -1,35 +1,34 @@
 // backend-api/test-models.js
-const { GoogleGenAI } = require("@google/genai");
 require("dotenv").config();
 
-async function listModels() {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+async function listAllModels() {
+  const API_KEY = process.env.GEMINI_API_KEY;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
 
   try {
-    console.log(
-      "Fetching available models with key:",
-      process.env.GEMINI_API_KEY.substring(0, 10) + "..."
-    );
-    const response = await ai.models.list();
+    console.log("Checking available models for your API key...");
+    const response = await fetch(url);
+    const data = await response.json();
 
-    console.log("\n--- MODELS YOU CAN USE ---");
-
-    // The new SDK uses an async iterator for lists
-    for await (const model of response) {
-      // Check if the model supports content generation (text/image)
-      if (
-        model.supportedGenerationMethods &&
-        model.supportedGenerationMethods.includes("generateContent")
-      ) {
-        console.log(`ID: ${model.name.replace("models/", "")}`);
-        console.log(`    Display: ${model.displayName}`);
-      }
+    if (data.error) {
+      throw new Error(data.error.message);
     }
-    console.log("--------------------------\n");
+
+    console.log("\n--- MODELS AVAILABLE TO YOUR KEY ---");
+    data.models.forEach((m) => {
+      // Look for models that support 'generateContent'
+      if (m.supportedGenerationMethods.includes("generateContent")) {
+        console.log(`ID: ${m.name.split("/").pop()}`);
+        console.log(`   Description: ${m.description}\n`);
+      }
+    });
+    console.log("------------------------------------\n");
+    console.log(
+      "Look for an ID like 'gemini-1.5-flash-latest' or 'gemini-pro'."
+    );
   } catch (error) {
     console.error("Error fetching models:", error.message);
-    console.error("Full Error:", JSON.stringify(error, null, 2));
   }
 }
 
-listModels();
+listAllModels();
