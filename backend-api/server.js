@@ -106,21 +106,23 @@ app.post("/api/visualize", verifyToken, async (req, res) => {
       ? imageBase64.split(",")[1]
       : imageBase64;
 
-    // Use the specific experimental image generation model
+    // Use Imagen 3 for image editing with image output
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp-image-generation",
-      // CRITICAL: You must enable IMAGE modality for image output
-      generationConfig: {
-        responseModalities: ["IMAGE"],
-      },
+      model: "imagen-3.0-generate-001",
     });
 
     const result = await model.generateContent([
-      `Edit this room photo. Change only the wall color. 
-       Paint all visible wall surfaces exactly the color ${color.name} (Hex code: ${color.hex}). 
-       Do not change the furniture, floor, or ceiling. Preserve the original lighting and shadows.
-       Output only the final modified image.`,
-      { inlineData: { mimeType: mimeType || "image/jpeg", data: cleanBase64 } },
+      {
+        text: `Edit this room photo. Change only the wall color to ${color.name} (${color.hex}). 
+Keep all furniture, floor, ceiling, lighting, and shadows exactly as they are. 
+Only recolor the walls to the specified color.`,
+      },
+      {
+        inlineData: {
+          mimeType: mimeType || "image/jpeg",
+          data: cleanBase64,
+        },
+      },
     ]);
 
     const response = await result.response;
