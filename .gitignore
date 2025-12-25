@@ -7,24 +7,51 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-.env.local
+# Dependencies
+node_modules/
+jspm_packages/
 
-# Editor directories and files
+# Build & Production
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Firebase
+.firebase/
+firebase-debug.log*
+ui-debug.log*
+firestore-debug.log*
+
+# Security / Environment Variables
+# Ignore all env files by default
+.env
+.env.*
+# Explicitly un-ignore example files if you have them
+!.env.example
+.env.local
+# Specific backend secrets
+backend-api/.env
+backend-api/service-account-key.json
+
+# Editor-specific files
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+!.vscode/launch.json
+!.vscode/settings.json
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# Security
-backend-api/.env
-backend-api/service-account-key.json
-.firebase/
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# Testing
+coverage/
+.eslintcache
