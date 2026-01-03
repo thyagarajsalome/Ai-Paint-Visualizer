@@ -1,12 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta name="msvalidate.01" content="7BE3F5092496F607BD8EB7753CD93E8C" />
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/icon.png-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="msvalidate.01" content="7BE3F5092496F607BD8EB7753CD93E8C" />
+
+    <title>wallpaint - AI Room Paint Visualizer & Home Color Preview</title>
+    <meta
+      name="title"
+      content="wallpaint - AI Room Paint Visualizer & Home Color Preview"
+    />
+    <meta
+      name="description"
+      content="Upload a photo of your room and use AI to visualize different paint colors on your walls instantly. Photorealistic previews with wallpaint AI."
+    />
+    <meta
+      name="keywords"
+      content="AI paint visualizer, room color preview, virtual wall painter, home interior design AI, Gemini AI paint"
+    />
+    <link rel="canonical" href="https://wallpaint.in/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://wallpaint.in/" />
+    <meta property="og:title" content="wallpaint - AI Room Paint Visualizer" />
+    <meta
+      property="og:description"
+      content="See your room in any color before you paint. Upload a photo and let our AI do the work."
+    />
+    <meta property="og:image" content="https://wallpaint.in/logo.png" />
+
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://wallpaint.in/" />
+    <meta
+      property="twitter:title"
+      content="wallpaint - AI Room Paint Visualizer"
+    />
+    <meta
+      property="twitter:description"
+      content="Photorealistic AI paint visualization for your home."
+    />
+    <meta property="twitter:image" content="https://wallpaint.in/logo.png" />
+
+    <link rel="icon" type="image/png" href="/icon.png-192.png" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon.png-192.png" />
     <meta name="theme-color" content="#4f46e5" />
+
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta
@@ -14,8 +53,22 @@
       content="black-translucent"
     />
     <meta name="apple-mobile-web-app-title" content="wallpaint" />
-    <link rel="apple-touch-icon" href="/icon.png-192.png" />
-    <title>wallpaint - AI Paint Visualizer</title>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "wallpaint",
+        "operatingSystem": "Web, Android, iOS",
+        "applicationCategory": "DesignApplication",
+        "description": "AI-powered tool to visualize room paint colors using generative AI.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "INR"
+        }
+      }
+    </script>
 
     <script type="importmap">
       {
@@ -28,7 +81,7 @@
     </script>
 
     <script>
-      // Set theme on page load to prevent FOUC (KEEP THIS SCRIPT)
+      // Set theme on page load to prevent FOUC (Flash of Unstyled Content)
       if (
         localStorage.theme === "dark" ||
         (!("theme" in localStorage) &&
@@ -39,7 +92,7 @@
         document.documentElement.classList.remove("dark");
       }
     </script>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
   </head>
   <body class="bg-gray-100 dark:bg-gray-900">
     <div id="root"></div>
